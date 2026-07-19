@@ -117,12 +117,11 @@
     white-space:pre;
     padding:20px 24px;
     border:1.5px solid var(--ink);
-    box-shadow:5px 5px 0 var(--pink);
     caret-color:var(--pink);
     min-width:200px;min-height:80px;
     tab-size:1;
   }
-  #out:focus{outline:none;box-shadow:5px 5px 0 var(--blue)}
+  #out:focus{outline:none;border-color:var(--blue)}
   /* ── dropzone ── */
   #drop{
     position:absolute;inset:28px;
@@ -226,7 +225,7 @@
     <h2>Цвет</h2>
     <div class="color-row">
       <input type="color" id="fg" value="#1B1A18" title="Цвет символов" aria-label="Цвет символов">
-      <input type="color" id="bg" value="#F2EFE8" title="Цвет фона" aria-label="Цвет фона">
+      <input type="color" id="bg" value="#FFFFFF" title="Цвет фона" aria-label="Цвет фона">
       <button class="swap" id="swap" title="Поменять местами" aria-label="Поменять цвета местами">⇄</button>
     </div>
     <div class="color-row" style="margin-top:8px;flex-wrap:wrap">
