@@ -201,7 +201,8 @@
       <option value="custom">Свой набор ↓</option>
     </select>
     <input type="text" id="customChars" aria-label="Свой набор символов" placeholder="от светлого к тёмному, напр.  .растр" style="margin-top:8px;display:none">
-    <p class="mini">Порядок символов — от светлого к тёмному.</p>
+    <button class="full" id="shuffle" title="Случайно перемешать порядок символов текущего набора">⚄ Перемешать символы</button>
+    <p class="mini">Порядок символов — от светлого к тёмному. Перемешивание ломает этот порядок — для фактурных экспериментов.</p>
   </div>
 
   <div class="sec">
@@ -370,6 +371,20 @@
     requestGenerate();
   };
   $('customChars').oninput = () => requestGenerate();
+
+  /* перемешивание текущего набора (Фишер–Йетс) → в «Свой набор» */
+  $('shuffle').onclick = () => {
+    const chars = [...currentRamp()];
+    for(let i = chars.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    $('customChars').value = chars.join('');
+    $('charset').value = 'custom';
+    $('customChars').style.display = 'block';
+    requestGenerate();
+    saveSettings();
+  };
 
   /* ── генерация ASCII ── */
   /* метрики знакоместа (px) при текущей типографике */
