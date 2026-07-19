@@ -237,6 +237,10 @@
     </div>
   </div>
 
+  <div class="sec">
+    <button class="full" id="reset" title="Вернуть все настройки к значениям по умолчанию">⌫ Сбросить настройки</button>
+  </div>
+
 </aside>
 
 <main>
@@ -526,6 +530,23 @@
     $('customChars').style.display = $('charset').value === 'custom' ? 'block' : 'none';
     syncOutputs();
   }
+  function resetSettings(){
+    PERSIST.forEach(id => {
+      const el = $(id);
+      if(el.type === 'checkbox') el.checked = el.defaultChecked;
+      else if(el.tagName === 'SELECT') el.selectedIndex = 0;
+      else el.value = el.defaultValue;
+    });
+    try{ localStorage.removeItem('nabor-settings'); }catch(e){}
+    state.targetW = null;
+    $('customChars').style.display = 'none';
+    syncOutputs();
+    applyStyle();
+    requestGenerate();
+    flash('Настройки сброшены');
+  }
+  $('reset').onclick = resetSettings;
+
   const aside = document.querySelector('aside');
   aside.addEventListener('input', saveSettings);
   aside.addEventListener('change', saveSettings);
