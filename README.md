@@ -17,7 +17,7 @@ Drop an image → get editable ASCII art → tweak it character by character →
 - **Character sets** — classic ramp, detailed 70-char ramp, blocks `░▒▓█`, strokes, binary, or type your own (light → dark)
 - **Direct editing** — the output is editable text; click and retype any character. Manual edits pause auto-regeneration so your work isn't wiped, and "regenerate" can be undone
 - **Persistent settings** — all controls are saved to `localStorage` between sessions
-- **Typography** — monospace font presets + upload your own `.ttf` / `.otf` / `.woff2`, adjustable size, weight (100–900), line height, tracking. The grid follows the measured character cell, so changing typography never distorts the image proportions
+- **Typography** — monospace font presets + upload your own `.ttf` / `.otf` / `.woff2`, adjustable size, weight (100–900), line height, tracking. The rendered image keeps a fixed size and aspect ratio: typography controls change the character density inside it, and the width slider anchors the size
 - **Color** — foreground/background pickers, swap, presets. The generator is background-aware: dense characters map to dark image areas on light backgrounds (like ink on paper) and to bright areas on dark backgrounds
 - **Export** — `.txt`, `.png` (3× render), `.svg` (text elements — convert to outlines in a vector editor if you used a custom font)
 
@@ -41,7 +41,7 @@ Settings → Pages → Source: *Deploy from a branch* → Branch: `main`, folder
 
 - Настройки генерации: ширина в символах, яркость, контраст, гамма, инверсия
 - Наборы символов: готовые + свой (порядок от светлого к тёмному)
-- Шрифты: базовые моноширинные + загрузка своих (`.ttf`, `.otf`, `.woff2`), кегль, толщина, интерлиньяж, трекинг — сетка пересчитывается по фактическому знакоместу, пропорции картинки не искажаются
+- Шрифты: базовые моноширинные + загрузка своих (`.ttf`, `.otf`, `.woff2`), кегль, толщина, интерлиньяж, трекинг — размер и пропорции картинки при этом не меняются: типографика управляет плотностью символов внутри, а размер якорится слайдером ширины
 - Цвета текста и фона с пресетами; генератор учитывает светлоту фона
 - Ручные правки не затираются автоперегенерацией; перегенерацию можно отменить
 - Настройки сохраняются между сессиями (localStorage)

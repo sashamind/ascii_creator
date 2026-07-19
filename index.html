@@ -262,7 +262,7 @@
   const out = $('out'), drop = $('drop'), stage = $('stage');
   const statusBar = $('statusBar'), statusText = $('statusText');
 
-  const state = { img: null, edited: false, customFonts: 0, snapshot: null };
+  const state = { img: null, edited: false, customFonts: 0, snapshot: null, targetW: null };
 
   /* ── анимированная ASCII-заставка в дропзоне ── */
   const dropArt = $('dropArt');
@@ -369,21 +369,27 @@
   $('customChars').oninput = () => requestGenerate();
 
   /* ── генерация ASCII ── */
-  /* соотношение ширина/высота знакоместа при текущей типографике:
-     от него зависит число строк, чтобы картинка сохраняла пропорции */
-  function cellAspect(){
+  /* метрики знакоместа (px) при текущей типографике */
+  function cellMetrics(){
     const size = +$('fsize').value;
     const ctx = document.createElement('canvas').getContext('2d');
     ctx.font = $('fweight').value + ' ' + size + 'px ' + $('font').value;
     const w = ctx.measureText('M').width + +$('lspace').value;
     const h = size * (+$('lheight').value / 100);
-    return (w > 0 && h > 0) ? w / h : 0.5;
+    return { w: Math.max(w, 0.5), h: Math.max(h, 0.5) };
   }
   function generate(){
     const img = state.img;
     if(!img) return;
-    const cols = +$('cols').value;
-    const rows = Math.max(1, Math.round(cols * (img.naturalHeight / img.naturalWidth) * cellAspect()));
+    const cell = cellMetrics();
+    // пиксельный размер картинки якорится слайдером «Ширина»;
+    // типографика меняет плотность символов внутри этого размера
+    if(state.targetW == null) state.targetW = +$('cols').value * cell.w;
+    const cols = Math.min(300, Math.max(20, Math.round(state.targetW / cell.w)));
+    const rows = Math.max(1, Math.round(cols * (img.naturalHeight / img.naturalWidth) * (cell.w / cell.h)));
+    $('cols').value = cols;
+    const colsOut = document.querySelector('output[for="cols"]');
+    if(colsOut) colsOut.textContent = cols;
     const cv = document.createElement('canvas');
     cv.width = cols; cv.height = rows;
     const ctx = cv.getContext('2d', { willReadFrequently: true });
@@ -468,8 +474,9 @@
     inp.addEventListener('input', () => {
       const o = document.querySelector('output[for="' + inp.id + '"]');
       if(o) o.textContent = fmtVal(inp);
+      if(inp.id === 'cols') state.targetW = null;   // слайдер ширины задаёт новый якорь размера
       if(genInputs.includes(inp.id)){ requestGenerate(); }
-      else { applyStyle(); requestGenerate(); }   // типографика меняет знакоместо → пересчёт сетки
+      else { applyStyle(); requestGenerate(); }     // типографика меняет плотность внутри фиксированного размера
     });
   });
   $('invert').onchange = requestGenerate;
