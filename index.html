@@ -103,9 +103,19 @@
   .swap{padding:4px 8px;font-size:11px}
   .mini{font-size:10.5px;color:#8a8478;line-height:1.5;margin-top:8px}
   .full{width:100%;margin-top:6px}
+  .scrollfade{display:none}   /* подсказка «листается вправо» — только в мобильной ленте настроек */
+  /* ── футер ── */
+  .footer{
+    flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:5px 16px;border-top:1.5px solid var(--ink);
+    background:var(--panel);font-size:10.5px;color:#8a8478;
+  }
+  .footer a{color:inherit;text-decoration:none;white-space:nowrap}
+  .footer a:hover{color:var(--ink);text-decoration:underline}
   /* ── preview ── */
   .stage{
     flex:1;overflow:auto;position:relative;
+    display:flex;                 /* + margin:auto на #out → центрирование, но со скроллом при переполнении */
     background:
       repeating-linear-gradient(0deg,transparent 0 23px,rgba(0,120,191,.05) 23px 24px),
       repeating-linear-gradient(90deg,transparent 0 23px,rgba(0,120,191,.05) 23px 24px),
@@ -113,7 +123,7 @@
     padding:28px;
   }
   #out{
-    display:inline-block;
+    display:block;margin:auto;
     white-space:pre;
     padding:20px 24px;
     border:1.5px solid var(--ink);
@@ -147,10 +157,46 @@
   #regen{display:none;padding:3px 9px;font-size:10.5px}
   .status.edited #regen{display:inline-block}
   @media(max-width:760px){
-    .app{flex-direction:column;overflow-y:auto}
-    aside{width:100%;border-right:none;border-bottom:1.5px solid var(--line)}
-    main{min-height:60vh}
+    /* превью сверху, настройки — вниз горизонтальной лентой карточек */
+    .app{flex-direction:column-reverse}
+    main{flex:1 1 auto;min-height:0}
+    aside{
+      width:100%;flex:0 0 auto;max-height:46vh;
+      display:flex;flex-direction:row;align-items:stretch;
+      overflow-x:auto;overflow-y:hidden;
+      -webkit-overflow-scrolling:touch;
+      scroll-snap-type:x proximity;
+      overscroll-behavior-x:contain;
+      border-right:none;border-top:2px solid var(--ink);
+      padding-bottom:0;
+    }
+    .sec{
+      flex:0 0 85vw;max-width:320px;
+      border-bottom:none;border-right:1.5px solid var(--line);
+      overflow-y:auto;
+      scroll-snap-align:start;
+    }
+    .sec:last-child{border-right:none}
     .hint{display:none}
+    /* компактная шапка, чтобы все кнопки экспорта помещались */
+    header{gap:10px;padding:10px 12px}
+    .logo{font-size:13px;letter-spacing:.02em}
+    .exports{gap:6px}
+    .exports button{padding:6px 8px;font-size:11px}
+    #copy .lbl{display:none}
+    /* превью почти во всю ширину экрана — картинка идёт по размеру экрана */
+    .stage{padding:12px}
+    #drop{inset:12px}
+    #out{padding:12px 14px}
+    /* градиент у правого края ленты → видно, что настройки листаются вправо */
+    .scrollfade{
+      display:block;position:sticky;right:0;align-self:stretch;
+      flex:0 0 0;width:0;pointer-events:none;z-index:3;
+    }
+    .scrollfade::before{
+      content:'';position:absolute;top:0;bottom:0;right:0;width:46px;
+      background:linear-gradient(to left, var(--panel), rgba(235,231,221,0));
+    }
   }
 </style>
 </head>
@@ -160,7 +206,7 @@
   <div class="logo">ascii<b>_</b>creator<i>_</i></div>
   <div class="hint">картинка → символы → правь как текст → скачивай</div>
   <div class="exports">
-    <button id="copy" title="Скопировать в буфер обмена">⧉ COPY</button>
+    <button id="copy" title="Скопировать в буфер обмена">⧉<span class="lbl"> COPY</span></button>
     <button id="dl-txt" title="Скачать как .txt">.TXT</button>
     <button id="dl-svg" title="Скачать как .svg">.SVG</button>
     <button id="dl-png" class="primary" title="Скачать как .png">.PNG</button>
@@ -175,12 +221,12 @@
     <button class="full" id="pick">Загрузить картинку…</button>
     <input type="file" id="file" accept="image/*" hidden>
     <button class="full" id="demo">Пример — сфера</button>
-    <p class="mini">Или перетащи файл в область справа, или вставь из буфера (Ctrl+V).</p>
+    <button class="full" id="reset" title="Вернуть все настройки к значениям по умолчанию">⌫ Сбросить настройки</button>
+    <p class="mini">Или перетащи файл в область превью, или вставь из буфера (Ctrl+V).</p>
   </div>
 
   <div class="sec">
     <h2>Генерация</h2>
-    <div class="row"><label for="cols">Ширина, симв.</label><input type="range" id="cols" min="20" max="300" value="110"><output for="cols">110</output></div>
     <div class="row"><label for="bright">Яркость</label><input type="range" id="bright" min="-100" max="100" value="0"><output for="bright">0</output></div>
     <div class="row"><label for="contrast">Контраст</label><input type="range" id="contrast" min="-100" max="100" value="0"><output for="contrast">0</output></div>
     <div class="row"><label for="gamma">Гамма</label><input type="range" id="gamma" min="30" max="300" value="100"><output for="gamma">1.0</output></div>
@@ -237,9 +283,7 @@
     </div>
   </div>
 
-  <div class="sec">
-    <button class="full" id="reset" title="Вернуть все настройки к значениям по умолчанию">⌫ Сбросить настройки</button>
-  </div>
+  <div class="scrollfade" aria-hidden="true"></div>
 
 </aside>
 
@@ -260,13 +304,18 @@
 </main>
 </div>
 
+<footer class="footer">
+  <a href="mailto:mindrin.sasha@gmail.com">mindrin.sasha@gmail.com</a>
+  <a href="https://sashamind.github.io/sashamindrin/" target="_blank" rel="noopener">© 2026 Sasha Mindrin</a>
+</footer>
+
 <script>
 (() => {
   const $ = id => document.getElementById(id);
   const out = $('out'), drop = $('drop'), stage = $('stage');
   const statusBar = $('statusBar'), statusText = $('statusText');
 
-  const state = { img: null, edited: false, customFonts: 0, snapshot: null, targetW: null };
+  const state = { img: null, edited: false, customFonts: 0, snapshot: null };
 
   /* ── анимированная ASCII-заставка в дропзоне ── */
   const dropArt = $('dropArt');
@@ -388,26 +437,58 @@
 
   /* ── генерация ASCII ── */
   /* метрики знакоместа (px) при текущей типографике */
+  let measEl = null;
+  function measureCharW(){
+    if(!measEl){
+      measEl = document.createElement('pre');
+      measEl.style.cssText = 'position:absolute;visibility:hidden;left:-9999px;top:0;margin:0;padding:0;white-space:pre;tab-size:1';
+      document.body.appendChild(measEl);
+    }
+    // мерим реальную раскладку (а не canvas measureText) — так cols×ширина гарантированно влезает
+    measEl.style.fontFamily = $('font').value;
+    measEl.style.fontSize = $('fsize').value + 'px';
+    measEl.style.fontWeight = $('fweight').value;
+    measEl.style.letterSpacing = $('lspace').value + 'px';
+    const N = 200;
+    measEl.textContent = 'M'.repeat(N);
+    return measEl.getBoundingClientRect().width / N;
+  }
   function cellMetrics(){
     const size = +$('fsize').value;
-    const ctx = document.createElement('canvas').getContext('2d');
-    ctx.font = $('fweight').value + ' ' + size + 'px ' + $('font').value;
-    const w = ctx.measureText('M').width + +$('lspace').value;
+    const w = measureCharW();
     const h = size * (+$('lheight').value / 100);
     return { w: Math.max(w, 0.5), h: Math.max(h, 0.5) };
+  }
+  /* доступная под картинку ширина области превью (px), с учётом отступов .stage и #out */
+  function availWidth(){
+    const sCS = getComputedStyle(stage), oCS = getComputedStyle(out);
+    const pad = parseFloat(sCS.paddingLeft) + parseFloat(sCS.paddingRight)
+              + parseFloat(oCS.paddingLeft) + parseFloat(oCS.paddingRight)
+              + parseFloat(oCS.borderLeftWidth) + parseFloat(oCS.borderRightWidth);
+    return Math.max(60, stage.clientWidth - pad - 2);  // -2px запас, чтобы строка точно не вылезла
+  }
+  /* доступная под картинку высота области превью (px) */
+  function availHeight(){
+    const sCS = getComputedStyle(stage), oCS = getComputedStyle(out);
+    const pad = parseFloat(sCS.paddingTop) + parseFloat(sCS.paddingBottom)
+              + parseFloat(oCS.paddingTop) + parseFloat(oCS.paddingBottom)
+              + parseFloat(oCS.borderTopWidth) + parseFloat(oCS.borderBottomWidth);
+    return Math.max(40, stage.clientHeight - pad - 2);
   }
   function generate(){
     const img = state.img;
     if(!img) return;
     const cell = cellMetrics();
-    // пиксельный размер картинки якорится слайдером «Ширина»;
-    // типографика меняет плотность символов внутри этого размера
-    if(state.targetW == null) state.targetW = +$('cols').value * cell.w;
-    const cols = Math.min(300, Math.max(20, Math.round(state.targetW / cell.w)));
-    const rows = Math.max(1, Math.round(cols * (img.naturalHeight / img.naturalWidth) * (cell.w / cell.h)));
-    $('cols').value = cols;
-    const colsOut = document.querySelector('output[for="cols"]');
-    if(colsOut) colsOut.textContent = cols;
+    // размер картинки фиксирован по рабочей области и вручную не меняется (contain):
+    // берём меньшую посадку — по ширине или по высоте. На мобилке область высокая → обычно
+    // связывает ширина; на десктопе широкая → связывает высота; для вытянутых картинок —
+    // автоматически ограничивает другая сторона. Типографика меняет только плотность внутри.
+    const availW = availWidth(), availH = availHeight();
+    const wCols = Math.floor(availW / cell.w);
+    const hCols = Math.floor(availH * (img.naturalWidth / img.naturalHeight) / cell.w);
+    const cols = Math.min(300, Math.max(20, Math.min(wCols, hCols)));
+    let rows = Math.max(1, Math.round(cols * (img.naturalHeight / img.naturalWidth) * (cell.w / cell.h)));
+    rows = Math.min(rows, Math.max(1, Math.floor(availH / cell.h)));  // страховка: не выше рабочей области (округление + мин. ширина)
     const cv = document.createElement('canvas');
     cv.width = cols; cv.height = rows;
     const ctx = cv.getContext('2d', { willReadFrequently: true });
@@ -476,7 +557,7 @@
   }
 
   /* ── слайдеры и подписи ── */
-  const genInputs = ['cols','bright','contrast','gamma'];
+  const genInputs = ['bright','contrast','gamma'];
   function fmtVal(inp){
     return inp.id === 'gamma' ? (inp.value/100).toFixed(1)
          : inp.id === 'lheight' ? (inp.value/100).toFixed(2)
@@ -492,12 +573,19 @@
     inp.addEventListener('input', () => {
       const o = document.querySelector('output[for="' + inp.id + '"]');
       if(o) o.textContent = fmtVal(inp);
-      if(inp.id === 'cols') state.targetW = null;   // слайдер ширины задаёт новый якорь размера
       if(genInputs.includes(inp.id)){ requestGenerate(); }
-      else { applyStyle(); requestGenerate(); }     // типографика меняет плотность внутри фиксированного размера
+      else { applyStyle(); requestGenerate(); }     // типографика меняет плотность внутри фиксированной ширины
     });
   });
   $('invert').onchange = requestGenerate;
+
+  /* ширина картинки следует за областью превью → пересчёт при ресайзе/повороте */
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    if(!state.img) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(requestGenerate, 150);
+  });
 
   /* ── оформление превью ── */
   function applyStyle(){
@@ -522,7 +610,7 @@
   });
 
   /* ── сохранение настроек между сессиями ── */
-  const PERSIST = ['cols','bright','contrast','gamma','invert','charset','customChars','font','fsize','fweight','lheight','lspace','fg','bg'];
+  const PERSIST = ['bright','contrast','gamma','invert','charset','customChars','font','fsize','fweight','lheight','lspace','fg','bg'];
   function saveSettings(){
     const o = {};
     PERSIST.forEach(id => { const el = $(id); o[id] = el.type === 'checkbox' ? el.checked : el.value; });
@@ -552,7 +640,6 @@
       else el.value = el.defaultValue;
     });
     try{ localStorage.removeItem('ascii_creator-settings'); }catch(e){}
-    state.targetW = null;
     $('customChars').style.display = 'none';
     syncOutputs();
     applyStyle();
