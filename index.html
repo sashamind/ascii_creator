@@ -161,6 +161,10 @@
   #regen{display:none;padding:3px 9px;font-size:10.5px}
   .status.edited #regen{display:inline-block}
   @media(max-width:760px){
+    /* iOS Safari: тянемся на полную высоту без нижней панели (lvh), а страницу делаем
+       прокручиваемой — лёгкий скролл вниз прячет панель браузера */
+    html,body{height:auto;overflow:visible}
+    body{min-height:100vh;min-height:100lvh}
     /* превью сверху, настройки — вниз горизонтальной лентой карточек */
     .app{flex-direction:column-reverse}
     main{flex:1 1 auto;min-height:0}
