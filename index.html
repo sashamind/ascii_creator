@@ -20,6 +20,15 @@
     --mono:'IBM Plex Mono','SF Mono',Menlo,Consolas,'Courier New',monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0}
+  /* ── тонкие скроллбары ── */
+  *{scrollbar-width:thin;scrollbar-color:#bdb6a8 transparent}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{
+    background:#bdb6a8;border:2px solid transparent;background-clip:padding-box;border-radius:8px;
+  }
+  ::-webkit-scrollbar-thumb:hover{background:#8a8478;background-clip:padding-box}
+  ::-webkit-scrollbar-corner{background:transparent}
   html,body{height:100%}
   body{
     font-family:var(--mono);
@@ -273,18 +282,29 @@
 
   <div class="sec">
     <h2>Символы</h2>
-    <select id="charset" aria-label="Набор символов">
-      <option value=" .:-=+*#%@">Классика · .:-=+*#%@</option>
-      <option value=" .'`^&quot;,:;Il!i&gt;&lt;~+_-?][}{1)(|\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&amp;8%B@$">Детальный (70 симв.)</option>
-      <option value=" ░▒▓█">Блоки ░▒▓█</option>
-      <option value=" .oO0@">Точки .oO0@</option>
-      <option value=" ·—/|\#">Штрихи ·—/|\#</option>
-      <option value=" 01">Бинарный 01</option>
-      <option value="custom">Свой набор ↓</option>
-    </select>
-    <input type="text" id="customChars" aria-label="Свой набор символов" placeholder="от светлого к тёмному, напр.  .растр" style="margin-top:8px;display:none">
-    <button class="full" id="shuffle" title="Случайно перемешать порядок символов текущего набора">⚄ Перемешать символы</button>
-    <p class="mini">Порядок символов — от светлого к тёмному. Перемешивание ломает этот порядок — для фактурных экспериментов.</p>
+    <div id="rampControls">
+      <select id="charset" aria-label="Набор символов">
+        <option value=" .:-=+*#%@">Классика · .:-=+*#%@</option>
+        <option value=" .'`^&quot;,:;Il!i&gt;&lt;~+_-?][}{1)(|\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&amp;8%B@$">Детальный (70 симв.)</option>
+        <option value=" ░▒▓█">Блоки ░▒▓█</option>
+        <option value=" .oO0@">Точки .oO0@</option>
+        <option value=" ·—/|\#">Штрихи ·—/|\#</option>
+        <option value=" 01">Бинарный 01</option>
+        <option value="custom">Свой набор ↓</option>
+      </select>
+      <input type="text" id="customChars" aria-label="Свой набор символов" placeholder="от светлого к тёмному, напр.  .растр" style="margin-top:8px;display:none">
+      <button class="full" id="shuffle" title="Случайно перемешать порядок символов текущего набора">⚄ Перемешать символы</button>
+      <p class="mini">Порядок символов — от светлого к тёмному. Перемешивание ломает этот порядок — для фактурных экспериментов.</p>
+    </div>
+    <div id="lineControls" style="display:none">
+      <select id="lineStyle" aria-label="Стиль линий контура">
+        <option value="|-/\">ASCII · | - / \</option>
+        <option value="│─╱╲">Линии · │ ─ ╱ ╲</option>
+        <option value="┃━╱╲">Жирные · ┃ ━ ╱ ╲</option>
+        <option value="║═╱╲">Двойные · ║ ═ ╱ ╲</option>
+      </select>
+      <p class="mini">Символы контура по направлению края: вертикаль · горизонталь · диагонали. Инверсия заливает фон, оставляя контур пустым.</p>
+    </div>
   </div>
 
   <div class="sec">
@@ -639,19 +659,24 @@
     if(edge){
       // контурный режим: оператор Собеля по сетке светлоты, символ линии — по направлению края
       const thr = +$('edgeThresh').value / 100;
+      const ls = $('lineStyle').value;
+      const V = ls[0] || '|', H = ls[1] || '-', SL = ls[2] || '/', BS = ls[3] || '\\';
+      const fill = inv ? '█' : ' ';                     // инверсия: контур пустой, фон залит
+      const line = inv ? ' ' : null;                    // (null → выбираем по направлению)
       const at = (x, y) => L[Math.min(rows-1, Math.max(0, y)) * cols + Math.min(cols-1, Math.max(0, x))];
       for(let y = 0; y < rows; y++){
         for(let x = 0; x < cols; x++){
           const gx = (at(x+1,y-1) + 2*at(x+1,y) + at(x+1,y+1)) - (at(x-1,y-1) + 2*at(x-1,y) + at(x-1,y+1));
           const gy = (at(x-1,y+1) + 2*at(x,y+1) + at(x+1,y+1)) - (at(x-1,y-1) + 2*at(x,y-1) + at(x+1,y-1));
           const mag = Math.min(1, Math.hypot(gx, gy) / 4);
-          if(mag < thr){ s += ' '; continue; }        // слабый край → фон
+          if(mag < thr){ s += fill; continue; }         // не край → фон (заливка при инверсии)
+          if(line !== null){ s += line; continue; }     // инверсия: край оставляем пустым
           let ang = Math.atan2(gy, gx) * 180 / Math.PI;
-          if(ang < 0) ang += 180;                       // край — линия без направления
-          s += (ang < 22.5 || ang >= 157.5) ? '|'
-             : ang < 67.5 ? '/'
-             : ang < 112.5 ? '-'
-             : '\\';
+          if(ang < 0) ang += 180;                        // край — линия без направления
+          s += (ang < 22.5 || ang >= 157.5) ? V
+             : ang < 67.5 ? SL
+             : ang < 112.5 ? H
+             : BS;
         }
         s += '\n';
       }
@@ -724,10 +749,15 @@
     });
   });
   $('invert').onchange = requestGenerate;
-  $('edge').onchange = () => {
-    $('edgeThreshRow').style.display = $('edge').checked ? '' : 'none';
-    requestGenerate();
-  };
+  // в контурном режиме показываем стиль линий вместо набора плотности
+  function updateModeControls(){
+    const on = $('edge').checked;
+    $('edgeThreshRow').style.display = on ? '' : 'none';
+    $('rampControls').style.display = on ? 'none' : '';
+    $('lineControls').style.display = on ? '' : 'none';
+  }
+  $('edge').onchange = () => { updateModeControls(); requestGenerate(); };
+  $('lineStyle').onchange = requestGenerate;
 
   /* ширина картинки следует за областью превью → пересчёт при ресайзе/повороте */
   let resizeTimer = null;
@@ -760,7 +790,7 @@
   });
 
   /* ── сохранение настроек между сессиями ── */
-  const PERSIST = ['bright','contrast','gamma','invert','edge','edgeThresh','charset','customChars','font','fsize','fweight','lheight','lspace','fg','bg'];
+  const PERSIST = ['bright','contrast','gamma','invert','edge','edgeThresh','charset','customChars','lineStyle','font','fsize','fweight','lheight','lspace','fg','bg'];
   function saveSettings(){
     const o = {};
     PERSIST.forEach(id => { const el = $(id); o[id] = el.type === 'checkbox' ? el.checked : el.value; });
@@ -780,7 +810,7 @@
     if($('font').selectedIndex < 0) $('font').selectedIndex = 0;
     if($('charset').selectedIndex < 0) $('charset').selectedIndex = 0;
     $('customChars').style.display = $('charset').value === 'custom' ? 'block' : 'none';
-    $('edgeThreshRow').style.display = $('edge').checked ? '' : 'none';
+    updateModeControls();
     syncOutputs();
   }
   function resetSettings(){
@@ -792,7 +822,7 @@
     });
     try{ localStorage.removeItem('ascii_creator-settings'); }catch(e){}
     $('customChars').style.display = 'none';
-    $('edgeThreshRow').style.display = 'none';
+    updateModeControls();
     syncOutputs();
     applyStyle();
     requestGenerate();
