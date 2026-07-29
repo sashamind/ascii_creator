@@ -14,7 +14,8 @@ Drop an image → get editable ASCII art → tweak it character by character →
 - **Generation controls** — brightness, contrast, gamma, invert
 - **Contour mode** — a Sobel edge-detection pass with an adjustable threshold. Outlines are drawn either with directional line characters (ASCII / box-drawing / heavy / double) or with any density set — including your own — mapped to edge strength; invert turns it into a stencil that keeps the chosen set
 - **Character sets** — classic ramp, detailed 70-char ramp, blocks `░▒▓█`, strokes, binary, or type your own (light → dark), plus a shuffle button that randomizes the current set for textured, glitchy looks
-- **Direct editing** — the output is editable text; click and retype any character. Manual edits pause auto-regeneration so your work isn't wiped, and "regenerate" can be undone
+- **Direct editing** — the output is editable text; click and retype any character. Clicking a character also loads it into the replace tool. Manual edits pause auto-regeneration so your work isn't wiped
+- **Undo / redo** — a full history of the graphic (generation, manual edits, replacements) with ↶ / ↷ buttons and Ctrl/⌘+Z (Shift for redo)
 - **Persistent settings** — all controls are saved to `localStorage` between sessions, with a one-click reset to defaults
 - **Fixed, auto-fit size** — the image is sized to the working area and can't be resized by hand: on mobile it fills the screen width, on desktop it fits the height of the working area (width follows the aspect ratio). Always centered, and reflows on window resize / rotation
 - **Typography** — monospace font presets + upload your own `.ttf` / `.otf` / `.woff2`, adjustable size, weight (100–900), line height, tracking. Typography controls change the character density inside that fixed size, not the image size itself
@@ -45,7 +46,8 @@ Settings → Pages → Source: *Deploy from a branch* → Branch: `main`, folder
 - Наборы символов: готовые + свой (порядок от светлого к тёмному) + кнопка случайного перемешивания набора для фактурных экспериментов
 - Шрифты: базовые моноширинные + загрузка своих (`.ttf`, `.otf`, `.woff2`), кегль, толщина, интерлиньяж, трекинг — типографика управляет только плотностью символов внутри фиксированного размера, а не размером картинки
 - Цвета текста и фона с пресетами; генератор учитывает светлоту фона
-- Ручные правки не затираются автоперегенерацией; перегенерацию можно отменить
+- Ручные правки не затираются автоперегенерацией; клик по символу подставляет его в замену
+- Undo / redo всей графики (генерация, правки, замены): кнопки ↶ / ↷ и Ctrl/⌘+Z (Shift — вперёд)
 - Настройки сохраняются между сессиями (localStorage), есть кнопка сброса к значениям по умолчанию
 - Копирование результата в буфер одной кнопкой
 - Экспорт: `.txt`, `.png` (3×), `.svg`

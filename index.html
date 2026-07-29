@@ -191,6 +191,10 @@
   .status.edited .dot{background:var(--pink)}
   #regen{display:none;padding:3px 9px;font-size:10.5px}
   .status.edited #regen{display:inline-block}
+  .histgrp{display:flex;gap:4px;flex-shrink:0}
+  .hist{padding:2px 9px;font-size:13px;line-height:1}
+  .hist:disabled{opacity:.3;cursor:default}
+  .hist:disabled:hover{background:var(--paper);color:var(--ink)}
   @media(max-width:760px){
     /* iOS Safari: тянемся на полную высоту без нижней панели (lvh), а страницу делаем
        прокручиваемой — лёгкий скролл вниз прячет панель браузера */
@@ -228,6 +232,10 @@
     .stage{padding:12px}
     #drop{inset:12px}
     #out{padding:12px 14px}
+    /* компактный статус-бар, чтобы ↶↷ + «перегенерировать» помещались */
+    .status{gap:8px;padding:6px 12px}
+    #statusText{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .rnote{display:none}
     /* градиент у правого края ленты → видно, что настройки листаются вправо */
     .scrollfade{
       display:block;position:sticky;right:0;align-self:stretch;
@@ -315,7 +323,7 @@
       <button id="doReplace" title="Заменить все такие символы в текущей графике">Заменить</button>
     </div>
     <datalist id="artChars"></datalist>
-    <p class="mini">Меняет все такие символы в текущей графике. Правки не затираются автоперегенерацией; «перегенерировать» вернёт исходные символы.</p>
+    <p class="mini">Клик по символу в графике подставит его в поле слева. Меняет все такие символы в текущей графике; можно отменить (↶ / Ctrl+Z).</p>
   </div>
 
   <div class="sec">
@@ -364,9 +372,12 @@
   </div>
   <div class="status" id="statusBar">
     <span class="dot"></span>
+    <span class="histgrp">
+      <button id="undo" class="hist" title="Отменить (Ctrl/⌘+Z)" aria-label="Отменить" disabled>↶</button>
+      <button id="redo" class="hist" title="Вернуть (Ctrl/⌘+Shift+Z)" aria-label="Вернуть" disabled>↷</button>
+    </span>
     <span id="statusText">Нет изображения</span>
-    <button id="regen" class="pink">⟲ перегенерировать (правки сотрутся)</button>
-    <button id="unregen" style="display:none;padding:3px 9px;font-size:10.5px">↩ вернуть правки</button>
+    <button id="regen" class="pink">⟲ перегенерировать<span class="rnote"> (правки сотрутся)</span></button>
   </div>
 </main>
 </div>
@@ -394,7 +405,7 @@
     <div class="onb-step">
       <span class="onb-badge">Шаг 3 из 4</span>
       <h3>Правьте символы</h3>
-      <p>Графика — это обычный текст: <b>кликните любой символ и перепечатайте</b>. Раздел <b>«Замена символа»</b> меняет все одинаковые символы разом. Ручные правки не затираются — «перегенерировать» вернёт исходное.</p>
+      <p>Графика — это обычный текст: <b>кликните символ и перепечатайте</b> (клик ещё и подставит его в <b>«Замену символа»</b> — она меняет все такие символы разом). Любые правки можно отменить и вернуть — <b>↶ ↷</b> или Ctrl/⌘+Z.</p>
     </div>
     <div class="onb-step">
       <span class="onb-badge">Шаг 4 из 4</span>
@@ -418,7 +429,7 @@
   const out = $('out'), drop = $('drop'), stage = $('stage');
   const statusBar = $('statusBar'), statusText = $('statusText');
 
-  const state = { img: null, edited: false, customFonts: 0, snapshot: null };
+  const state = { img: null, edited: false, customFonts: 0 };
 
   /* ── анимированная ASCII-заставка в дропзоне ── */
   const dropArt = $('dropArt');
@@ -453,7 +464,7 @@
   function useImage(img){
     state.img = img;
     state.edited = false;
-    state.snapshot = null;
+    history = []; hIdx = -1; updateHistButtons();   // новая картинка → чистая история
     clearInterval(noiseTimer);
     drop.style.display = 'none';
     generate();
@@ -563,8 +574,10 @@
     const re = new RegExp(from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
     const count = (txt.match(re) || []).length;
     if(!count){ flash('Символ «' + from + '» не найден в графике'); return; }
+    flushCommit();                                       // сохранить состояние до замены
     out.textContent = txt.replace(re, to);
-    state.edited = true; state.snapshot = null;
+    state.edited = true;
+    commitNow();                                         // и после — чтобы замену можно было отменить
     updateStatus();
     flash('Заменено вхождений: ' + count);
   }
@@ -715,10 +728,53 @@
     }
     out.textContent = s;
     state.edited = false;
+    scheduleCommit();
     updateStatus();
   }
   function hex(h){ return [1,3,5].map(i => parseInt(h.slice(i, i+2), 16)); }
   function lum([r,g,b]){ return 0.2126*r + 0.7152*g + 0.0722*b; }
+
+  /* ── история правок: undo / redo по тексту графики ── */
+  const HIST_MAX = 60;
+  let history = [], hIdx = -1, restoring = false, commitTimer = null;
+  function commitNow(){
+    clearTimeout(commitTimer); commitTimer = null;
+    if(restoring || !state.img) return;
+    const text = out.textContent;
+    if(hIdx >= 0 && history[hIdx] === text) return;     // без изменений — не дублируем
+    history = history.slice(0, hIdx + 1);               // обрезаем «будущее» при новой ветке
+    history.push(text);
+    if(history.length > HIST_MAX) history.shift();
+    hIdx = history.length - 1;
+    updateHistButtons();
+  }
+  function scheduleCommit(){ clearTimeout(commitTimer); commitTimer = setTimeout(commitNow, 350); }
+  function flushCommit(){ if(commitTimer) commitNow(); }
+  function restore(text){
+    restoring = true;
+    out.textContent = text;
+    restoring = false;
+    state.edited = true;                                // навигация по истории = ручное состояние
+    updateStatus();
+    updateHistButtons();
+  }
+  function undo(){ flushCommit(); if(hIdx > 0){ hIdx--; restore(history[hIdx]); } }
+  function redo(){ if(hIdx < history.length - 1){ hIdx++; restore(history[hIdx]); } }
+  function updateHistButtons(){
+    $('undo').disabled = hIdx <= 0;
+    $('redo').disabled = hIdx >= history.length - 1;
+  }
+  $('undo').onclick = undo;
+  $('redo').onclick = redo;
+  document.addEventListener('keydown', e => {
+    if(!(e.ctrlKey || e.metaKey)) return;
+    const k = e.key.toLowerCase();
+    if(k !== 'z' && k !== 'y') return;
+    const ae = document.activeElement;                  // в текстовых полях — нативная отмена
+    if(ae && ae !== out && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+    if(k === 'z' && !e.shiftKey){ e.preventDefault(); undo(); }
+    else{ e.preventDefault(); redo(); }
+  });
 
   /* авто-перегенерация с защитой ручных правок */
   let genTimer = null;
@@ -728,24 +784,26 @@
     clearTimeout(genTimer);
     genTimer = setTimeout(generate, 60);
   }
-  $('regen').onclick = () => { state.snapshot = out.innerText; state.edited = false; generate(); };
-  $('unregen').onclick = () => {
-    out.innerText = state.snapshot;
-    state.snapshot = null;
-    state.edited = true;
-    updateStatus();
-  };
+  $('regen').onclick = () => { flushCommit(); state.edited = false; generate(); };
 
-  out.addEventListener('input', () => { state.edited = true; state.snapshot = null; updateStatus(); });
+  out.addEventListener('input', () => { state.edited = true; updateStatus(); scheduleCommit(); });
 
   function updateStatus(){
     statusBar.classList.toggle('edited', state.edited);
-    $('unregen').style.display = state.snapshot ? 'inline-block' : 'none';
     if(!state.img){ statusText.textContent = 'Нет изображения'; return; }
     const lines = out.innerText.replace(/\n+$/, '').split('\n');
     const w = Math.max(...lines.map(l => l.length), 0);
     statusText.textContent = (state.edited ? 'Отредактировано вручную · ' : '') + w + '×' + lines.length + ' симв.';
   }
+
+  /* клик по символу в графике → подставить его в поле «что» замены */
+  out.addEventListener('click', () => {
+    const sel = window.getSelection();
+    if(!sel || !sel.focusNode || sel.focusNode.nodeType !== Node.TEXT_NODE) return;
+    const t = sel.focusNode.textContent, off = sel.focusOffset;
+    const ch = (t[off] && t[off] !== '\n') ? t[off] : t[off - 1];
+    if(ch && ch !== '\n' && ch !== ' ') $('findChar').value = ch;
+  });
 
   /* ── слайдеры и подписи ── */
   const genInputs = ['bright','contrast','gamma','edgeThresh'];
