@@ -282,29 +282,28 @@
 
   <div class="sec">
     <h2>Символы</h2>
-    <div id="rampControls">
-      <select id="charset" aria-label="Набор символов">
-        <option value=" .:-=+*#%@">Классика · .:-=+*#%@</option>
-        <option value=" .'`^&quot;,:;Il!i&gt;&lt;~+_-?][}{1)(|\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&amp;8%B@$">Детальный (70 симв.)</option>
-        <option value=" ░▒▓█">Блоки ░▒▓█</option>
-        <option value=" .oO0@">Точки .oO0@</option>
-        <option value=" ·—/|\#">Штрихи ·—/|\#</option>
-        <option value=" 01">Бинарный 01</option>
-        <option value="custom">Свой набор ↓</option>
-      </select>
-      <input type="text" id="customChars" aria-label="Свой набор символов" placeholder="от светлого к тёмному, напр.  .растр" style="margin-top:8px;display:none">
-      <button class="full" id="shuffle" title="Случайно перемешать порядок символов текущего набора">⚄ Перемешать символы</button>
-      <p class="mini">Порядок символов — от светлого к тёмному. Перемешивание ломает этот порядок — для фактурных экспериментов.</p>
-    </div>
-    <div id="lineControls" style="display:none">
-      <select id="lineStyle" aria-label="Стиль линий контура">
-        <option value="|-/\">ASCII · | - / \</option>
-        <option value="│─╱╲">Линии · │ ─ ╱ ╲</option>
-        <option value="┃━╱╲">Жирные · ┃ ━ ╱ ╲</option>
-        <option value="║═╱╲">Двойные · ║ ═ ╱ ╲</option>
-      </select>
-      <p class="mini">Символы контура по направлению края: вертикаль · горизонталь · диагонали. Инверсия заливает фон, оставляя контур пустым.</p>
-    </div>
+    <select id="charset" aria-label="Набор символов">
+      <option value=" .:-=+*#%@">Классика · .:-=+*#%@</option>
+      <option value=" .'`^&quot;,:;Il!i&gt;&lt;~+_-?][}{1)(|\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&amp;8%B@$">Детальный (70 симв.)</option>
+      <option value=" ░▒▓█">Блоки ░▒▓█</option>
+      <option value=" .oO0@">Точки .oO0@</option>
+      <option value=" ·—/|\#">Штрихи ·—/|\#</option>
+      <option value=" 01">Бинарный 01</option>
+      <option value="custom">Свой набор ↓</option>
+    </select>
+    <select id="lineStyle" aria-label="Символы контура" style="display:none">
+      <optgroup label="Линии — по направлению края">
+        <option value="dir:|-/\">ASCII · | - / \</option>
+        <option value="dir:│─╱╲">Линии · │ ─ ╱ ╲</option>
+        <option value="dir:┃━╱╲">Жирные · ┃ ━ ╱ ╲</option>
+        <option value="dir:║═╱╲">Двойные · ║ ═ ╱ ╲</option>
+      </optgroup>
+      <optgroup label="Плотность — по силе края" id="rampOptGroup"></optgroup>
+    </select>
+    <input type="text" id="customChars" aria-label="Свой набор символов" placeholder="от светлого к тёмному, напр.  .растр" style="margin-top:8px;display:none">
+    <button class="full" id="shuffle" title="Случайно перемешать порядок символов текущего набора">⚄ Перемешать символы</button>
+    <p class="mini" id="symHintRamp">Порядок символов — от светлого к тёмному. Перемешивание ломает этот порядок — для фактурных экспериментов.</p>
+    <p class="mini" id="symHintLine" style="display:none">Контур: «линии» — символ по направлению края; «плотность» — символ по силе края (можно свой набор). Инверсия делает стенсил, сохраняя набор.</p>
   </div>
 
   <div class="sec">
@@ -519,11 +518,16 @@
     }
     return sel;
   }
-  $('charset').onchange = () => {
-    $('customChars').style.display = $('charset').value === 'custom' ? 'block' : 'none';
-    requestGenerate();
-  };
+  $('charset').onchange = () => { updateCustomVisibility(); requestGenerate(); };
   $('customChars').oninput = () => requestGenerate();
+
+  // «плотностные» варианты для контура — из того же набора charset (без дублирования строк)
+  [...$('charset').options].forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = 'ramp:' + o.value;
+    opt.textContent = o.textContent;
+    $('rampOptGroup').appendChild(opt);
+  });
 
   /* перемешивание текущего набора (Фишер–Йетс) → в «Свой набор» */
   $('shuffle').onclick = () => {
@@ -657,26 +661,42 @@
 
     let s = '';
     if(edge){
-      // контурный режим: оператор Собеля по сетке светлоты, символ линии — по направлению края
+      // контурный режим: оператор Собеля по сетке светлоты
       const thr = +$('edgeThresh').value / 100;
-      const ls = $('lineStyle').value;
-      const V = ls[0] || '|', H = ls[1] || '-', SL = ls[2] || '/', BS = ls[3] || '\\';
-      const fill = inv ? '█' : ' ';                     // инверсия: контур пустой, фон залит
-      const line = inv ? ' ' : null;                    // (null → выбираем по направлению)
+      const sel = $('lineStyle').value;
+      const isDir = sel.startsWith('dir:');
+      // символы: либо 4 глифа по направлению, либо набор плотности по силе края
+      let V, H, SL, BS, ramp, rn;
+      if(isDir){
+        const g = sel.slice(4);
+        V = g[0] || '|'; H = g[1] || '-'; SL = g[2] || '/'; BS = g[3] || '\\';
+      }else{
+        ramp = sel.slice(5);
+        if(ramp === 'custom'){ const cc = $('customChars').value; ramp = cc.length >= 2 ? cc : ' .:-=+*#%@'; }
+        rn = ramp.length - 1;
+      }
       const at = (x, y) => L[Math.min(rows-1, Math.max(0, y)) * cols + Math.min(cols-1, Math.max(0, x))];
       for(let y = 0; y < rows; y++){
         for(let x = 0; x < cols; x++){
           const gx = (at(x+1,y-1) + 2*at(x+1,y) + at(x+1,y+1)) - (at(x-1,y-1) + 2*at(x-1,y) + at(x-1,y+1));
           const gy = (at(x-1,y+1) + 2*at(x,y+1) + at(x+1,y+1)) - (at(x-1,y-1) + 2*at(x,y-1) + at(x+1,y-1));
           const mag = Math.min(1, Math.hypot(gx, gy) / 4);
-          if(mag < thr){ s += fill; continue; }         // не край → фон (заливка при инверсии)
-          if(line !== null){ s += line; continue; }     // инверсия: край оставляем пустым
-          let ang = Math.atan2(gy, gx) * 180 / Math.PI;
-          if(ang < 0) ang += 180;                        // край — линия без направления
-          s += (ang < 22.5 || ang >= 157.5) ? V
-             : ang < 67.5 ? SL
-             : ang < 112.5 ? H
-             : BS;
+          if(isDir){
+            if(mag < thr){ s += inv ? '█' : ' '; continue; }   // фон (заливка при инверсии)
+            if(inv){ s += ' '; continue; }                     // инверсия: контур пустой
+            let ang = Math.atan2(gy, gx) * 180 / Math.PI;
+            if(ang < 0) ang += 180;                            // край — линия без направления
+            s += (ang < 22.5 || ang >= 157.5) ? V
+               : ang < 67.5 ? SL
+               : ang < 112.5 ? H
+               : BS;
+          }else{
+            // сила края → символ набора; инверсия разворачивает набор (стенсил тем же набором)
+            let t = mag < thr ? 0 : (mag - thr) / (1 - thr);
+            let idx = Math.round(Math.min(1, Math.max(0, t)) * rn);
+            if(inv) idx = rn - idx;
+            s += ramp[idx];
+          }
         }
         s += '\n';
       }
@@ -749,15 +769,26 @@
     });
   });
   $('invert').onchange = requestGenerate;
-  // в контурном режиме показываем стиль линий вместо набора плотности
+  // в контурном режиме показываем селектор символов контура вместо набора плотности
   function updateModeControls(){
     const on = $('edge').checked;
     $('edgeThreshRow').style.display = on ? '' : 'none';
-    $('rampControls').style.display = on ? 'none' : '';
-    $('lineControls').style.display = on ? '' : 'none';
+    $('charset').style.display = on ? 'none' : '';
+    $('shuffle').style.display = on ? 'none' : '';
+    $('symHintRamp').style.display = on ? 'none' : '';
+    $('lineStyle').style.display = on ? '' : 'none';
+    $('symHintLine').style.display = on ? '' : 'none';
+    updateCustomVisibility();
+  }
+  // «Свой набор» доступен и в обычном режиме, и в контурном (плотность)
+  function updateCustomVisibility(){
+    const show = ($('edge').checked
+      ? $('lineStyle').value === 'ramp:custom'
+      : $('charset').value === 'custom');
+    $('customChars').style.display = show ? 'block' : 'none';
   }
   $('edge').onchange = () => { updateModeControls(); requestGenerate(); };
-  $('lineStyle').onchange = requestGenerate;
+  $('lineStyle').onchange = () => { updateCustomVisibility(); requestGenerate(); };
 
   /* ширина картинки следует за областью превью → пересчёт при ресайзе/повороте */
   let resizeTimer = null;
@@ -809,7 +840,7 @@
     // сохранённый пользовательский шрифт недоступен после перезагрузки страницы
     if($('font').selectedIndex < 0) $('font').selectedIndex = 0;
     if($('charset').selectedIndex < 0) $('charset').selectedIndex = 0;
-    $('customChars').style.display = $('charset').value === 'custom' ? 'block' : 'none';
+    if($('lineStyle').selectedIndex < 0) $('lineStyle').selectedIndex = 0;
     updateModeControls();
     syncOutputs();
   }
