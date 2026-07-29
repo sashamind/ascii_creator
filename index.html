@@ -103,6 +103,10 @@
   .swap{padding:4px 8px;font-size:11px}
   .mini{font-size:10.5px;color:#8a8478;line-height:1.5;margin-top:8px}
   .full{width:100%;margin-top:6px}
+  .replace-row{display:flex;align-items:center;gap:8px}
+  .replace-row input[type=text]{width:46px;flex:0 0 auto;text-align:center;font-size:15px;padding:6px 4px}
+  .replace-row .arrow{color:#8a8478;flex:0 0 auto}
+  .replace-row #doReplace{flex:1;padding:6px 8px;font-size:12px}
   .scrollfade{display:none}   /* подсказка «листается вправо» — только в мобильной ленте настроек */
   /* ── футер ── */
   .footer{
@@ -249,6 +253,18 @@
     <input type="text" id="customChars" aria-label="Свой набор символов" placeholder="от светлого к тёмному, напр.  .растр" style="margin-top:8px;display:none">
     <button class="full" id="shuffle" title="Случайно перемешать порядок символов текущего набора">⚄ Перемешать символы</button>
     <p class="mini">Порядок символов — от светлого к тёмному. Перемешивание ломает этот порядок — для фактурных экспериментов.</p>
+  </div>
+
+  <div class="sec">
+    <h2>Замена символа</h2>
+    <div class="replace-row">
+      <input type="text" id="findChar" maxlength="1" list="artChars" placeholder="?" aria-label="Какой символ заменить">
+      <span class="arrow">→</span>
+      <input type="text" id="replChar" maxlength="1" placeholder="?" aria-label="На какой символ заменить">
+      <button id="doReplace" title="Заменить все такие символы в текущей графике">Заменить</button>
+    </div>
+    <datalist id="artChars"></datalist>
+    <p class="mini">Меняет все такие символы в текущей графике. Правки не затираются автоперегенерацией; «перегенерировать» вернёт исходные символы.</p>
   </div>
 
   <div class="sec">
@@ -434,6 +450,37 @@
     requestGenerate();
     saveSettings();
   };
+
+  /* ── замена конкретного символа во всей графике ── */
+  function artChars(){
+    const set = new Set(out.textContent.replace(/\n/g, ''));
+    set.delete(' ');
+    return [...set];
+  }
+  function refreshArtChars(){
+    const dl = $('artChars');
+    dl.innerHTML = '';
+    artChars().forEach(ch => { const o = document.createElement('option'); o.value = ch; dl.appendChild(o); });
+  }
+  function replaceChar(){
+    if(!state.img){ flash('Сначала загрузите картинку'); return; }
+    const from = $('findChar').value;
+    if(!from){ flash('Укажите символ для замены'); return; }
+    const to = $('replChar').value === '' ? ' ' : $('replChar').value;  // пусто → пробел, чтобы не ломать сетку
+    const txt = out.textContent;
+    const re = new RegExp(from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    const count = (txt.match(re) || []).length;
+    if(!count){ flash('Символ «' + from + '» не найден в графике'); return; }
+    out.textContent = txt.replace(re, to);
+    state.edited = true; state.snapshot = null;
+    updateStatus();
+    flash('Заменено вхождений: ' + count);
+  }
+  $('doReplace').onclick = replaceChar;
+  $('findChar').addEventListener('focus', refreshArtChars);
+  [$('findChar'), $('replChar')].forEach(el => el.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); replaceChar(); }
+  }));
 
   /* ── генерация ASCII ── */
   /* метрики знакоместа (px) при текущей типографике */
