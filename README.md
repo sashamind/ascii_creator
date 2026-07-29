@@ -12,6 +12,7 @@ Drop an image → get editable ASCII art → tweak it character by character →
 - **Input** — file picker, drag & drop, paste from clipboard (Ctrl+V), or a built-in procedural demo image
 - **Copy to clipboard** — one click to grab the result as plain text
 - **Generation controls** — brightness, contrast, gamma, invert
+- **Contour mode** — a Sobel edge-detection pass that draws just the outlines with line characters (`| - / \`) oriented along each edge, with an adjustable threshold
 - **Character sets** — classic ramp, detailed 70-char ramp, blocks `░▒▓█`, strokes, binary, or type your own (light → dark), plus a shuffle button that randomizes the current set for textured, glitchy looks
 - **Direct editing** — the output is editable text; click and retype any character. Manual edits pause auto-regeneration so your work isn't wiped, and "regenerate" can be undone
 - **Persistent settings** — all controls are saved to `localStorage` between sessions, with a one-click reset to defaults
@@ -39,6 +40,7 @@ Settings → Pages → Source: *Deploy from a branch* → Branch: `main`, folder
 Загрузи картинку (кнопкой, перетаскиванием или Ctrl+V) — получи ASCII-графику, которую можно править прямо как текст, посимвольно.
 
 - Настройки генерации: яркость, контраст, гамма, инверсия
+- Контурный режим: детекция краёв по Собелю — рисуются только контуры символами линий (`| - / \`) по направлению края, с настраиваемым порогом
 - Размер картинки подгоняется под рабочую область и вручную не меняется: на мобильном — по ширине экрана, на десктопе — по высоте рабочей области (ширина из пропорций). Картинка всегда по центру, пересчёт при ресайзе окна и повороте
 - Наборы символов: готовые + свой (порядок от светлого к тёмному) + кнопка случайного перемешивания набора для фактурных экспериментов
 - Шрифты: базовые моноширинные + загрузка своих (`.ttf`, `.otf`, `.woff2`), кегль, толщина, интерлиньяж, трекинг — типографика управляет только плотностью символов внутри фиксированного размера, а не размером картинки
