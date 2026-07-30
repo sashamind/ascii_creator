@@ -143,10 +143,12 @@
     font-size:14px;padding:4px 8px;cursor:pointer}
   .onb-x:hover{background:none;color:var(--ink)}
   .onb-badge{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--blue)}
-  .onb-step{display:none}
-  .onb-step.on{display:block}
+  /* все шаги в одной grid-ячейке → карточка одинаковой высоты на всех этапах */
+  .onb-steps{display:grid}
+  .onb-step{grid-area:1/1;visibility:hidden}
+  .onb-step.on{visibility:visible}
   .onb-step h3{font-size:20px;margin:22px 0 20px;letter-spacing:.01em}
-  .onb-step p{font-size:13px;line-height:2;color:#4a463f;min-height:6em}
+  .onb-step p{font-size:13px;line-height:2;color:#4a463f}
   .onb-step b{color:var(--ink);font-weight:700}
   .onb-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:46px}
   .onb-dots{display:flex;gap:7px}
@@ -400,25 +402,27 @@
     <button class="onb-x" id="onbSkip" title="Пропустить" aria-label="Пропустить">✕</button>
     <pre class="onb-anim" id="onbAnim" aria-hidden="true"></pre>
 
-    <div class="onb-step on">
-      <span class="onb-badge">Шаг 1 из 4</span>
-      <h3 id="onbTitle">Загрузите картинку</h3>
-      <p>Перетащите изображение в область превью, нажмите <b>«Загрузить картинку…»</b> или вставьте из буфера (Ctrl/⌘+V). Нет своей — жмите <b>«Пример — сфера»</b>. Картинка сразу станет ASCII-графикой.</p>
-    </div>
-    <div class="onb-step">
-      <span class="onb-badge">Шаг 2 из 4</span>
-      <h3>Настройте вид</h3>
-      <p>Слева — <b>яркость, контраст, гамма, инверсия</b> и наборы символов (порядок — от светлого к тёмному). Кнопка <b>«Перемешать»</b> ломает порядок для фактурных эффектов. Размер подгоняется под область автоматически.</p>
-    </div>
-    <div class="onb-step">
-      <span class="onb-badge">Шаг 3 из 4</span>
-      <h3>Правьте символы</h3>
-      <p>Графика — это обычный текст: <b>кликните символ и перепечатайте</b> (клик ещё и подставит его в <b>«Замену символа»</b> — она меняет все такие символы разом). Любые правки можно отменить и вернуть — <b>↶ ↷</b> или Ctrl/⌘+Z.</p>
-    </div>
-    <div class="onb-step">
-      <span class="onb-badge">Шаг 4 из 4</span>
-      <h3>Сохраните результат</h3>
-      <p>Скопируйте в буфер или скачайте: <b>.TXT</b>, <b>.PNG</b> (3×) или <b>.SVG</b>. Всё считается прямо в браузере — картинки никуда не загружаются.</p>
+    <div class="onb-steps">
+      <div class="onb-step on">
+        <span class="onb-badge">Шаг 1 из 4</span>
+        <h3 id="onbTitle">Загрузите картинку</h3>
+        <p>Перетащите изображение в область превью, нажмите <b>«Загрузить картинку…»</b> или вставьте из буфера (Ctrl/⌘+V). Нет своей — жмите <b>«Пример — сфера»</b>. Картинка сразу станет ASCII-графикой.</p>
+      </div>
+      <div class="onb-step">
+        <span class="onb-badge">Шаг 2 из 4</span>
+        <h3>Настройте вид</h3>
+        <p>Слева — <b>яркость, контраст, гамма, инверсия</b> и наборы символов (порядок — от светлого к тёмному). Кнопка <b>«Перемешать»</b> ломает порядок для фактурных эффектов. Размер подгоняется под область автоматически.</p>
+      </div>
+      <div class="onb-step">
+        <span class="onb-badge">Шаг 3 из 4</span>
+        <h3>Правьте символы</h3>
+        <p>Графика — это обычный текст: <b>кликните символ и перепечатайте</b> (клик ещё и подставит его в <b>«Замену символа»</b> — она меняет все такие символы разом). Любые правки можно отменить и вернуть — <b>↶ ↷</b> или Ctrl/⌘+Z.</p>
+      </div>
+      <div class="onb-step">
+        <span class="onb-badge">Шаг 4 из 4</span>
+        <h3>Сохраните результат</h3>
+        <p>Скопируйте в буфер или скачайте: <b>.TXT</b>, <b>.PNG</b> (3×) или <b>.SVG</b>. Всё считается прямо в браузере — картинки никуда не загружаются.</p>
+      </div>
     </div>
 
     <div class="onb-nav">
