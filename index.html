@@ -64,11 +64,11 @@
   button.pink:hover{background:var(--ink);border-color:var(--ink)}
   button:focus-visible,input:focus-visible,select:focus-visible,[contenteditable]:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
   /* ── layout ── */
-  .app{flex:1;display:flex;min-height:0}
+  .app{flex:1;display:flex;flex-direction:row-reverse;min-height:0}  /* сайдбар справа */
   aside{
     width:270px;flex-shrink:0;
     background:var(--panel);
-    border-right:1.5px solid var(--line);
+    border-left:1.5px solid var(--line);
     overflow-y:auto;
     padding-bottom:24px;
   }
@@ -218,7 +218,7 @@
       -webkit-overflow-scrolling:touch;
       scroll-snap-type:x proximity;
       overscroll-behavior-x:contain;
-      border-right:none;border-top:2px solid var(--ink);
+      border-left:none;border-top:2px solid var(--ink);
       padding-bottom:0;
     }
     .sec{
