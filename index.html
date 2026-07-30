@@ -244,8 +244,12 @@
     .status{gap:8px;padding:6px 12px}
     #statusText{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .rnote{display:none}
-    /* онбординг: на узких экранах паддинг умереннее, чтобы анимация не подрезалась */
-    .onb-card{padding:40px 26px 28px}
+    /* онбординг: на мобилке плотнее по высоте (меньше межстрочный и отступы) */
+    .onb-card{padding:26px 24px 20px}
+    .onb-anim{margin-bottom:22px;padding-bottom:18px}
+    .onb-step h3{font-size:18px;margin:14px 0 12px}
+    .onb-step p{line-height:1.6}
+    .onb-nav{margin-top:24px}
     /* градиент у правого края ленты → видно, что настройки листаются вправо */
     .scrollfade{
       display:block;position:sticky;right:0;align-self:stretch;
