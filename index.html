@@ -128,22 +128,27 @@
   /* ── кнопка помощи + онбординг ── */
   .help{padding:5px 11px;font-weight:700;flex-shrink:0}
   .onb{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
-    background:rgba(27,26,24,.55);padding:20px}
+    background:rgba(18,17,15,.82);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:20px}
   .onb[hidden]{display:none}
-  .onb-card{position:relative;width:min(400px, 100vw - 40px);min-width:0;background:var(--paper);
-    border:2px solid var(--ink);box-shadow:9px 9px 0 rgba(0,120,191,.20);padding:22px 22px 16px}
-  .onb-ramp{font-size:12px;letter-spacing:.32em;color:var(--blue);margin-bottom:16px;user-select:none}
-  .onb-x{position:absolute;top:7px;right:7px;border:none;background:none;color:#8a8478;
+  .onb-card{position:relative;width:min(430px, 100vw - 36px);min-width:0;background:var(--paper);
+    border:2px solid var(--ink);box-shadow:10px 10px 0 rgba(0,120,191,.22);padding:34px 34px 22px}
+  .onb-anim{
+    margin:0 auto 24px;overflow:hidden;
+    font-size:11px;line-height:1.08;letter-spacing:.06em;color:var(--blue);
+    white-space:pre;text-align:center;user-select:none;
+    border-bottom:1.5px solid var(--line);padding-bottom:16px;
+  }
+  .onb-x{position:absolute;top:10px;right:10px;border:none;background:none;color:#8a8478;
     font-size:14px;padding:4px 8px;cursor:pointer}
   .onb-x:hover{background:none;color:var(--ink)}
-  .onb-badge{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--blue)}
+  .onb-badge{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--blue)}
   .onb-step{display:none}
   .onb-step.on{display:block}
-  .onb-step h3{font-size:17px;margin:8px 0 9px;letter-spacing:.01em}
-  .onb-step p{font-size:12.5px;line-height:1.65;color:#4a463f}
+  .onb-step h3{font-size:19px;margin:12px 0 12px;letter-spacing:.01em}
+  .onb-step p{font-size:13px;line-height:1.85;color:#4a463f;min-height:5.5em}
   .onb-step b{color:var(--ink);font-weight:700}
-  .onb-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px}
-  .onb-dots{display:flex;gap:6px}
+  .onb-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:26px}
+  .onb-dots{display:flex;gap:7px}
   .onb-dots i{width:7px;height:7px;display:block;background:var(--paper);border:1.5px solid var(--ink)}
   .onb-dots i.on{background:var(--blue);border-color:var(--blue)}
   .onb-btns{display:flex;gap:8px}
@@ -236,6 +241,8 @@
     .status{gap:8px;padding:6px 12px}
     #statusText{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .rnote{display:none}
+    /* онбординг: чуть компактнее, чтобы анимация не подрезалась на узких экранах */
+    .onb-card{padding:26px 22px 18px}
     /* градиент у правого края ленты → видно, что настройки листаются вправо */
     .scrollfade{
       display:block;position:sticky;right:0;align-self:stretch;
@@ -390,7 +397,7 @@
 <div class="onb" id="onb" hidden>
   <div class="onb-card" role="dialog" aria-modal="true" aria-labelledby="onbTitle">
     <button class="onb-x" id="onbSkip" title="Пропустить" aria-label="Пропустить">✕</button>
-    <div class="onb-ramp">.:-=+*#%@</div>
+    <pre class="onb-anim" id="onbAnim" aria-hidden="true"></pre>
 
     <div class="onb-step on">
       <span class="onb-badge">Шаг 1 из 4</span>
@@ -1048,20 +1055,64 @@
 
   /* ── онбординг ── */
   (function(){
-    const onb = $('onb');
+    const onb = $('onb'), anim = $('onbAnim');
     const steps = [...onb.querySelectorAll('.onb-step')];
     const dotsWrap = $('onbDots'), btnPrev = $('onbPrev'), btnNext = $('onbNext');
     let idx = 0;
     steps.forEach(() => dotsWrap.appendChild(document.createElement('i')));
     const dots = [...dotsWrap.children];
+
+    /* маленькие ASCII-анимации под каждый шаг */
+    const AW = 32, AH = 6, ARAMP = ' .:-=+*#%@';
+    const shade = v => ARAMP[Math.max(0, Math.min(9, Math.round(v * 9)))];
+    function stepFrame(step, t){
+      let s = '';
+      for(let y = 0; y < AH; y++){
+        for(let x = 0; x < AW; x++){
+          if(step === 0){                                   // дышащая сфера: картинка → символы
+            const cx = (AW-1)/2, cy = (AH-1)/2;
+            const nx = (x-cx)/(AW*0.34), ny = (y-cy)/(AH*0.60);
+            const d = Math.hypot(nx, ny), r = 0.9 + 0.12*Math.sin(t*1.4);
+            let v = 0;
+            if(d <= r){ const lz = Math.sqrt(Math.max(0, 1-(d/r)*(d/r))); v = Math.max(0, Math.min(1, (-nx*0.6 - ny*0.6 + lz)*0.62 + 0.34)); }
+            s += shade(v);
+          }else if(step === 1){                             // волны плотности: настройка
+            const v = (Math.sin(x*0.4 + t*1.7) + Math.cos(y*0.7 - t*1.2) + Math.sin((x+y)*0.22 + t) + 3)/6;
+            s += shade(v*1.35 - 0.3);
+          }else if(step === 2){                             // курсор-замена: правка символов
+            const head = (t*9) % (AW+12) - 6;
+            if(y === 2 || y === 3){
+              if(Math.abs(x-head) < 0.8) s += (Math.floor(t*5) % 2 ? '█' : '▓');
+              else s += x < head ? '@' : '·';
+            }else s += ' ';
+          }else{                                            // дождь символов в «файл»: экспорт
+            if(y === AH-1) s += '▄';
+            else s += (Math.floor((t*7 + x*1.7) % (AH+2)) === y ? '*' : ' ');
+          }
+        }
+        s += '\n';
+      }
+      return s;
+    }
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let animT = 0, animTimer = null;
+    function drawAnim(){ anim.textContent = stepFrame(idx, animT); }
+    function startAnim(){
+      drawAnim();
+      if(reduceMotion || animTimer) return;
+      animTimer = setInterval(() => { animT += 0.09; drawAnim(); }, 90);
+    }
+    function stopAnim(){ clearInterval(animTimer); animTimer = null; }
+
     function render(){
       steps.forEach((el, k) => el.classList.toggle('on', k === idx));
       dots.forEach((d, k) => d.classList.toggle('on', k === idx));
       btnPrev.style.visibility = idx === 0 ? 'hidden' : 'visible';
       btnNext.textContent = idx === steps.length - 1 ? 'Готово' : 'Далее';
+      drawAnim();
     }
-    function open(){ idx = 0; render(); onb.hidden = false; }
-    function close(){ onb.hidden = true; }
+    function open(){ idx = 0; render(); onb.hidden = false; startAnim(); }
+    function close(){ onb.hidden = true; stopAnim(); }
     btnNext.onclick = () => { idx < steps.length - 1 ? (idx++, render()) : close(); };
     btnPrev.onclick = () => { if(idx > 0){ idx--; render(); } };
     $('onbSkip').onclick = close;
