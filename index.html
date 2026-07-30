@@ -130,24 +130,25 @@
   .onb{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(18,17,15,.82);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:20px}
   .onb[hidden]{display:none}
-  .onb-card{position:relative;width:min(430px, 100vw - 36px);min-width:0;background:var(--paper);
-    border:2px solid var(--ink);box-shadow:10px 10px 0 rgba(0,120,191,.22);padding:34px 34px 22px}
+  .onb-card{position:relative;width:min(440px, 100vw - 36px);min-width:0;background:var(--paper);
+    border:2px solid var(--ink);box-shadow:10px 10px 0 rgba(0,120,191,.22);
+    padding:56px 52px 40px;max-height:calc(100vh - 40px);overflow:auto}
   .onb-anim{
-    margin:0 auto 24px;overflow:hidden;
+    margin:0 auto 44px;overflow:hidden;
     font-size:11px;line-height:1.08;letter-spacing:.06em;color:var(--blue);
     white-space:pre;text-align:center;user-select:none;
-    border-bottom:1.5px solid var(--line);padding-bottom:16px;
+    border-bottom:1.5px solid var(--line);padding-bottom:34px;
   }
-  .onb-x{position:absolute;top:10px;right:10px;border:none;background:none;color:#8a8478;
+  .onb-x{position:absolute;top:12px;right:12px;border:none;background:none;color:#8a8478;
     font-size:14px;padding:4px 8px;cursor:pointer}
   .onb-x:hover{background:none;color:var(--ink)}
   .onb-badge{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--blue)}
   .onb-step{display:none}
   .onb-step.on{display:block}
-  .onb-step h3{font-size:19px;margin:12px 0 12px;letter-spacing:.01em}
-  .onb-step p{font-size:13px;line-height:1.85;color:#4a463f;min-height:5.5em}
+  .onb-step h3{font-size:20px;margin:22px 0 20px;letter-spacing:.01em}
+  .onb-step p{font-size:13px;line-height:2;color:#4a463f;min-height:6em}
   .onb-step b{color:var(--ink);font-weight:700}
-  .onb-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:26px}
+  .onb-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:46px}
   .onb-dots{display:flex;gap:7px}
   .onb-dots i{width:7px;height:7px;display:block;background:var(--paper);border:1.5px solid var(--ink)}
   .onb-dots i.on{background:var(--blue);border-color:var(--blue)}
@@ -241,8 +242,8 @@
     .status{gap:8px;padding:6px 12px}
     #statusText{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .rnote{display:none}
-    /* онбординг: чуть компактнее, чтобы анимация не подрезалась на узких экранах */
-    .onb-card{padding:26px 22px 18px}
+    /* онбординг: на узких экранах паддинг умереннее, чтобы анимация не подрезалась */
+    .onb-card{padding:40px 26px 28px}
     /* градиент у правого края ленты → видно, что настройки листаются вправо */
     .scrollfade{
       display:block;position:sticky;right:0;align-self:stretch;
