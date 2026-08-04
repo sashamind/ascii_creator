@@ -774,7 +774,7 @@
     const mode = $('animMode').value;
     const edge = $('edge').checked, inv = $('invert').checked;
     const lightBg = lum(hex($('bg').value)) > lum(hex($('fg').value));
-    const cx = cols / 2, cy = rows / 2, FLOOR = 0.12;
+    const cx = cols / 2, cy = rows / 2, FLOOR = 0.02;
     const at = (xx, yy) => L[Math.min(rows-1, Math.max(0, yy)) * cols + Math.min(cols-1, Math.max(0, xx))];
     // «наполненность» клетки → анимация в основном по символам, по пустым местам — слабее
     const weight = (x, y) => {
