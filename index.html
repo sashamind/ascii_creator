@@ -349,6 +349,7 @@
       <option value="scan">Скан — бегущая полоса</option>
       <option value="glitch">Глитч — сдвиги строк</option>
     </select>
+    <div class="row" style="margin-top:10px"><label for="animSpeed">Скорость</label><input type="range" id="animSpeed" min="10" max="300" value="100"><output for="animSpeed">1.0×</output></div>
     <button class="full" id="animate" title="Оживить собранную графику">▶ Анимировать</button>
     <p class="mini">Оживляет собранную графику. Тип можно менять на лету. Саму графику не меняет: «Стоп» вернёт как было; настройки во время анимации тоже применяются вживую.</p>
   </div>
@@ -827,9 +828,14 @@
     if(animTimer) return;
     animBase = out.textContent;                        // вернём этот вид на «Стоп»
     state.animating = true;
-    const t0 = performance.now();
+    let animT = 0, animLast = performance.now();
     animFrame(0);
-    animTimer = setInterval(() => animFrame((performance.now() - t0) / 1000), 42);  // ~24 к/с
+    animTimer = setInterval(() => {                     // копим масштабированное время → смена скорости без скачка фазы
+      const now = performance.now();
+      animT += (now - animLast) / 1000 * (+$('animSpeed').value / 100);
+      animLast = now;
+      animFrame(animT);
+    }, 42);
     const b = $('animate'); b.textContent = '■ Стоп'; b.classList.add('pink');
   }
   function stopAnimate(){
@@ -918,6 +924,7 @@
   function fmtVal(inp){
     return inp.id === 'gamma' ? (inp.value/100).toFixed(1)
          : inp.id === 'lheight' ? (inp.value/100).toFixed(2)
+         : inp.id === 'animSpeed' ? (inp.value/100).toFixed(1) + '×'
          : inp.value;
   }
   function syncOutputs(){
@@ -930,6 +937,7 @@
     inp.addEventListener('input', () => {
       const o = document.querySelector('output[for="' + inp.id + '"]');
       if(o) o.textContent = fmtVal(inp);
+      if(inp.id === 'animSpeed'){ return; }          // читается циклом анимации, не перерисовывает
       if(genInputs.includes(inp.id)){ requestGenerate(); }
       else { applyStyle(); requestGenerate(); }     // типографика меняет плотность внутри фиксированной ширины
     });
@@ -987,7 +995,7 @@
   });
 
   /* ── сохранение настроек между сессиями ── */
-  const PERSIST = ['bright','contrast','gamma','invert','edge','edgeThresh','charset','customChars','lineStyle','animMode','font','fsize','fweight','lheight','lspace','fg','bg'];
+  const PERSIST = ['bright','contrast','gamma','invert','edge','edgeThresh','charset','customChars','lineStyle','animMode','animSpeed','font','fsize','fweight','lheight','lspace','fg','bg'];
   function saveSettings(){
     const o = {};
     PERSIST.forEach(id => { const el = $(id); o[id] = el.type === 'checkbox' ? el.checked : el.value; });
