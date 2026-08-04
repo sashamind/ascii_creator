@@ -341,6 +341,12 @@
   </div>
 
   <div class="sec">
+    <h2>Анимация</h2>
+    <button class="full" id="animate" title="Оживить собранную графику">▶ Анимировать</button>
+    <p class="mini">Живой шиммер по собранной графике — символы «дышат» бегущей волной. Саму графику не меняет: «Стоп» вернёт как было. Настройки во время анимации применяются на лету.</p>
+  </div>
+
+  <div class="sec">
     <h2>Шрифт</h2>
     <select id="font" aria-label="Шрифт">
       <option value="'IBM Plex Mono','SF Mono',Menlo,Consolas,monospace">IBM Plex Mono / система</option>
@@ -445,7 +451,7 @@
   const out = $('out'), drop = $('drop'), stage = $('stage');
   const statusBar = $('statusBar'), statusText = $('statusText');
 
-  const state = { img: null, edited: false, customFonts: 0 };
+  const state = { img: null, edited: false, customFonts: 0, frame: null, animating: false };
 
   /* ── анимированная ASCII-заставка в дропзоне ── */
   const dropArt = $('dropArt');
@@ -667,12 +673,8 @@
     const c = +$('contrast').value / 100;             // -1..1
     const cf = (1 + c) / (1 - Math.min(c, 0.99));     // фактор контраста
     const gamma = +$('gamma').value / 100;
-    const inv = $('invert').checked;
-    const edge = $('edge').checked;
-    // светлый фон → тёмные символы на светлых участках должны быть редкими:
-    // если фон светлее текста, автоматически считаем "яркое = пусто"
-    const fgL = lum(hex($('fg').value)), bgL = lum(hex($('bg').value));
-    const lightBg = bgL > fgL;
+    // светлый фон → тёмное = плотное; учитываем и для прозрачных пикселей
+    const lightBg = lum(hex($('bg').value)) > lum(hex($('fg').value));
 
     // сетка светлоты 0..1 с учётом яркости / контраста / гаммы
     const L = new Float32Array(rows * cols);
@@ -688,13 +690,23 @@
       }
     }
 
+    state.frame = { L, cols, rows };                   // база для аниматора
+    out.textContent = paintFromL(L, cols, rows);
+    if(state.animating) animBase = out.textContent;    // настройки менялись при анимации
+    state.edited = false;
+    scheduleCommit();
+    updateStatus();
+  }
+  /* сетка светлоты L → текст (набор / контур / инверсия читаются из контролов) */
+  function paintFromL(L, cols, rows){
+    const inv = $('invert').checked, edge = $('edge').checked;
+    const lightBg = lum(hex($('bg').value)) > lum(hex($('fg').value));
     let s = '';
     if(edge){
       // контурный режим: оператор Собеля по сетке светлоты
       const thr = +$('edgeThresh').value / 100;
       const sel = $('lineStyle').value;
       const isDir = sel.startsWith('dir:');
-      // символы: либо 4 глифа по направлению, либо набор плотности по силе края
       let V, H, SL, BS, ramp, rn;
       if(isDir){
         const g = sel.slice(4);
@@ -711,16 +723,12 @@
           const gy = (at(x-1,y+1) + 2*at(x,y+1) + at(x+1,y+1)) - (at(x-1,y-1) + 2*at(x,y-1) + at(x+1,y-1));
           const mag = Math.min(1, Math.hypot(gx, gy) / 4);
           if(isDir){
-            if(mag < thr){ s += inv ? '█' : ' '; continue; }   // фон (заливка при инверсии)
-            if(inv){ s += ' '; continue; }                     // инверсия: контур пустой
+            if(mag < thr){ s += inv ? '█' : ' '; continue; }
+            if(inv){ s += ' '; continue; }
             let ang = Math.atan2(gy, gx) * 180 / Math.PI;
-            if(ang < 0) ang += 180;                            // край — линия без направления
-            s += (ang < 22.5 || ang >= 157.5) ? V
-               : ang < 67.5 ? SL
-               : ang < 112.5 ? H
-               : BS;
+            if(ang < 0) ang += 180;
+            s += (ang < 22.5 || ang >= 157.5) ? V : ang < 67.5 ? SL : ang < 112.5 ? H : BS;
           }else{
-            // сила края → символ набора; инверсия разворачивает набор (стенсил тем же набором)
             let t = mag < thr ? 0 : (mag - thr) / (1 - thr);
             let idx = Math.round(Math.min(1, Math.max(0, t)) * rn);
             if(inv) idx = rn - idx;
@@ -736,19 +744,54 @@
         for(let x = 0; x < cols; x++){
           let v = L[y * cols + x];
           if(inv) v = 1 - v;
-          if(lightBg) v = 1 - v;                        // на светлом фоне тёмное = плотное
+          if(lightBg) v = 1 - v;
           s += chars[Math.round(v * n)];
         }
         s += '\n';
       }
     }
-    out.textContent = s;
-    state.edited = false;
-    scheduleCommit();
-    updateStatus();
+    return s;
   }
   function hex(h){ return [1,3,5].map(i => parseInt(h.slice(i, i+2), 16)); }
   function lum([r,g,b]){ return 0.2126*r + 0.7152*g + 0.0722*b; }
+
+  /* ── анимация собранной графики: бегущая волна яркости («шиммер») ── */
+  let animTimer = null, animBase = null, animBuf = null;
+  function animShimmer(t){
+    const f = state.frame;
+    if(!f) return;
+    const { L, cols, rows } = f;
+    if(!animBuf || animBuf.length !== L.length) animBuf = new Float32Array(L.length);
+    for(let y = 0; y < rows; y++){
+      for(let x = 0; x < cols; x++){
+        const w = 0.16*Math.sin(x*0.25 + t*2.3)
+                + 0.13*Math.cos(y*0.33 - t*1.7)
+                + 0.11*Math.sin((x+y)*0.16 + t*1.15);
+        let v = L[y*cols+x] + w;
+        animBuf[y*cols+x] = v < 0 ? 0 : v > 1 ? 1 : v;
+      }
+    }
+    out.textContent = paintFromL(animBuf, cols, rows);
+  }
+  function startAnimate(){
+    if(!state.img || !state.frame){ flash('Сначала загрузите картинку'); return; }
+    if(animTimer) return;
+    animBase = out.textContent;                        // вернём этот вид на «Стоп»
+    state.animating = true;
+    const t0 = performance.now();
+    animShimmer(0);
+    animTimer = setInterval(() => animShimmer((performance.now() - t0) / 1000), 42);  // ~24 к/с
+    const b = $('animate'); b.textContent = '■ Стоп'; b.classList.add('pink');
+  }
+  function stopAnimate(){
+    if(!animTimer) return;
+    clearInterval(animTimer); animTimer = null;
+    state.animating = false;
+    if(animBase != null) out.textContent = animBase;   // вернуть исходную графику
+    const b = $('animate'); b.textContent = '▶ Анимировать'; b.classList.remove('pink');
+    updateStatus();
+  }
+  $('animate').onclick = () => animTimer ? stopAnimate() : startAnimate();
 
   /* ── история правок: undo / redo по тексту графики ── */
   const HIST_MAX = 60;
