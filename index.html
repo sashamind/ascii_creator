@@ -112,6 +112,8 @@
   .swap{padding:4px 8px;font-size:11px}
   .mini{font-size:10.5px;color:#8a8478;line-height:1.5;margin-top:8px}
   .full{width:100%;margin-top:6px}
+  .anim-btns{display:flex;gap:8px;margin-top:6px}
+  .anim-btns button{flex:1}
   .replace-row{display:flex;align-items:center;gap:8px}
   .replace-row input[type=text]{width:46px;flex:0 0 auto;text-align:center;font-size:15px;padding:6px 4px}
   .replace-row .arrow{color:#8a8478;flex:0 0 auto}
@@ -350,8 +352,11 @@
       <option value="glitch">Глитч — сдвиги строк</option>
     </select>
     <div class="row" style="margin-top:10px"><label for="animSpeed">Скорость</label><input type="range" id="animSpeed" min="10" max="300" value="100"><output for="animSpeed">1.0×</output></div>
-    <button class="full" id="animate" title="Оживить собранную графику">▶ Анимировать</button>
-    <p class="mini">Оживляет собранную графику. Тип можно менять на лету. Саму графику не меняет: «Стоп» вернёт как было; настройки во время анимации тоже применяются вживую.</p>
+    <div class="anim-btns">
+      <button id="animate" title="Запустить / пауза">▶ Анимировать</button>
+      <button id="animStop" style="display:none" title="Остановить и вернуть исходную графику">■ Стоп</button>
+    </div>
+    <p class="mini">Пауза замирает на текущем кадре — его можно скачать (PNG/SVG/TXT/копировать). Стоп возвращает исходную графику. Тип и скорость меняются на лету.</p>
   </div>
 
   <div class="sec">
@@ -459,7 +464,7 @@
   const out = $('out'), drop = $('drop'), stage = $('stage');
   const statusBar = $('statusBar'), statusText = $('statusText');
 
-  const state = { img: null, edited: false, customFonts: 0, frame: null, animating: false };
+  const state = { img: null, edited: false, customFonts: 0, frame: null, animState: 'idle' };
 
   /* ── анимированная ASCII-заставка в дропзоне ── */
   const dropArt = $('dropArt');
@@ -494,6 +499,7 @@
   function useImage(img){
     state.img = img;
     state.edited = false;
+    if(state.animState !== 'idle'){ clearInterval(animTimer); animTimer = null; state.animState = 'idle'; updateAnimUI(); }
     history = []; hIdx = -1; updateHistButtons();   // новая картинка → чистая история
     clearInterval(noiseTimer);
     drop.style.display = 'none';
@@ -700,9 +706,10 @@
 
     state.frame = { L, cols, rows };                   // база для аниматора
     out.textContent = paintFromL(L, cols, rows);
-    if(state.animating) animBase = out.textContent;    // настройки менялись при анимации
+    if(state.animState !== 'idle') animBase = out.textContent;     // текущий статик → на «Стоп»
+    if(state.animState === 'paused') animFrame(animT);             // пере-заморозить кадр с новыми настройками
     state.edited = false;
-    scheduleCommit();
+    if(state.animState === 'idle') scheduleCommit();               // кадры анимации не пишем в историю
     updateStatus();
   }
   /* сетка светлоты L → текст (набор / контур / инверсия читаются из контролов) */
@@ -764,7 +771,7 @@
   function lum([r,g,b]){ return 0.2126*r + 0.7152*g + 0.0722*b; }
 
   /* ── анимация собранной графики: бегущая волна яркости («шиммер») ── */
-  let animTimer = null, animBase = null, animBuf = null;
+  let animTimer = null, animBase = null, animBuf = null, animT = 0, animLast = 0;
   const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
   const rnd = n => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };
   function animFrame(t){
@@ -823,30 +830,44 @@
     }
     out.textContent = paintFromL(animBuf, cols, rows);
   }
-  function startAnimate(){
-    if(!state.img || !state.frame){ flash('Сначала загрузите картинку'); return; }
-    if(animTimer) return;
-    animBase = out.textContent;                        // вернём этот вид на «Стоп»
-    state.animating = true;
-    let animT = 0, animLast = performance.now();
-    animFrame(0);
-    animTimer = setInterval(() => {                     // копим масштабированное время → смена скорости без скачка фазы
-      const now = performance.now();
-      animT += (now - animLast) / 1000 * (+$('animSpeed').value / 100);
-      animLast = now;
-      animFrame(animT);
-    }, 42);
-    const b = $('animate'); b.textContent = '■ Стоп'; b.classList.add('pink');
+  function animTick(){                                  // копим масштабированное время → смена скорости без скачка
+    const now = performance.now();
+    animT += (now - animLast) / 1000 * (+$('animSpeed').value / 100);
+    animLast = now;
+    animFrame(animT);
   }
-  function stopAnimate(){
-    if(!animTimer) return;
+  function animPlay(){                                  // старт или продолжение
+    if(!state.img || !state.frame){ flash('Сначала загрузите картинку'); return; }
+    if(state.animState === 'idle'){ animBase = out.textContent; animT = 0; animFrame(0); }  // запомнить исходник
+    state.animState = 'playing';
+    animLast = performance.now();
+    clearInterval(animTimer);
+    animTimer = setInterval(animTick, 42);
+    updateAnimUI();
+  }
+  function animPause(){                                 // замереть на текущем кадре (его можно скачать)
+    if(state.animState !== 'playing') return;
     clearInterval(animTimer); animTimer = null;
-    state.animating = false;
-    if(animBase != null) out.textContent = animBase;   // вернуть исходную графику
-    const b = $('animate'); b.textContent = '▶ Анимировать'; b.classList.remove('pink');
+    state.animState = 'paused';
+    updateAnimUI();
     updateStatus();
   }
-  $('animate').onclick = () => animTimer ? stopAnimate() : startAnimate();
+  function animStop(){                                  // вернуть исходную графику
+    if(state.animState === 'idle') return;
+    clearInterval(animTimer); animTimer = null;
+    state.animState = 'idle';
+    if(animBase != null) out.textContent = animBase;
+    updateAnimUI();
+    updateStatus();
+  }
+  function updateAnimUI(){
+    const b = $('animate'), s = $('animStop'), st = state.animState;
+    b.textContent = st === 'playing' ? '⏸ Пауза' : st === 'paused' ? '▶ Продолжить' : '▶ Анимировать';
+    b.classList.toggle('pink', st === 'playing');
+    s.style.display = st === 'idle' ? 'none' : '';
+  }
+  $('animate').onclick = () => state.animState === 'playing' ? animPause() : animPlay();
+  $('animStop').onclick = animStop;
 
   /* ── история правок: undo / redo по тексту графики ── */
   const HIST_MAX = 60;
