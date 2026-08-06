@@ -510,14 +510,22 @@
     drop.style.display = 'none';
     generate();
   }
-  function loadImage(file){
-    if(!file) return;
-    if(!file.type.startsWith('image/')){ flash('Это не изображение: ' + (file.name || file.type || '?')); return; }
+  function loadViaElement(file){                       // фолбэк для старых браузеров
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => { useImage(img); URL.revokeObjectURL(url); };
     img.onerror = () => { URL.revokeObjectURL(url); flash('Не удалось прочитать изображение'); };
     img.src = url;
+  }
+  async function loadImage(file){
+    if(!file) return;
+    if(!file.type.startsWith('image/')){ flash('Это не изображение: ' + (file.name || file.type || '?')); return; }
+    // createImageBitmap с from-image применяет EXIF-ориентацию (фото с телефона не повёрнуты)
+    if(window.createImageBitmap){
+      try{ useImage(await createImageBitmap(file, { imageOrientation: 'from-image' })); return; }
+      catch(e){ /* SVG и пр. — падаем в фолбэк */ }
+    }
+    loadViaElement(file);
   }
   $('pick').onclick = () => $('file').click();
   drop.onclick = () => $('file').click();
@@ -676,11 +684,12 @@
     // берём меньшую посадку — по ширине или по высоте. На мобилке область высокая → обычно
     // связывает ширина; на десктопе широкая → связывает высота; для вытянутых картинок —
     // автоматически ограничивает другая сторона. Типографика меняет только плотность внутри.
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;  // Image | ImageBitmap
     const availW = availWidth(), availH = availHeight();
     const wCols = Math.floor(availW / cell.w);
-    const hCols = Math.floor(availH * (img.naturalWidth / img.naturalHeight) / cell.w);
+    const hCols = Math.floor(availH * (iw / ih) / cell.w);
     const cols = Math.min(300, Math.max(20, Math.min(wCols, hCols)));
-    let rows = Math.max(1, Math.round(cols * (img.naturalHeight / img.naturalWidth) * (cell.w / cell.h)));
+    let rows = Math.max(1, Math.round(cols * (ih / iw) * (cell.w / cell.h)));
     rows = Math.min(rows, Math.max(1, Math.floor(availH / cell.h)));  // страховка: не выше рабочей области (округление + мин. ширина)
     const cv = document.createElement('canvas');
     cv.width = cols; cv.height = rows;

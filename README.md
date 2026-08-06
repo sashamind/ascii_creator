@@ -9,7 +9,7 @@ Drop an image → get editable ASCII art → tweak it character by character →
 
 ## Features
 
-- **Input** — file picker, drag & drop, paste from clipboard (Ctrl+V), or a built-in procedural demo image
+- **Input** — file picker, drag & drop, paste from clipboard (Ctrl+V), or a built-in procedural demo image; phone photos are auto-rotated by their EXIF orientation
 - **Copy to clipboard** — one click to grab the result as plain text
 - **Generation controls** — brightness, contrast, gamma, invert
 - **Dithering** — optional Floyd–Steinberg (error diffusion) or ordered (Bayer 4×4) dithering for smoother gradients and halftones
@@ -40,7 +40,7 @@ Settings → Pages → Source: *Deploy from a branch* → Branch: `main`, folder
 
 **ASCII-генератор из картинок, работает целиком в браузере.**
 
-Загрузи картинку (кнопкой, перетаскиванием или Ctrl+V) — получи ASCII-графику, которую можно править прямо как текст, посимвольно.
+Загрузи картинку (кнопкой, перетаскиванием или Ctrl+V) — получи ASCII-графику, которую можно править прямо как текст, посимвольно. Фото с телефона автоматически поворачиваются по EXIF.
 
 - Настройки генерации: яркость, контраст, гамма, инверсия
 - Дизеринг: Флойд–Стайнберг (диффузия ошибки) или упорядоченный (Байер 4×4) — плавнее градиенты и полутона
