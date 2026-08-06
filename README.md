@@ -19,6 +19,7 @@ Drop an image → get editable ASCII art → tweak it character by character →
 - **Undo / redo** — a full history of the graphic (generation, manual edits, replacements) with ↶ / ↷ buttons and Ctrl/⌘+Z (Shift for redo)
 - **Animate** — bring the assembled graphic to life with a choice of effects (shimmer, plasma, ripple, scan, glitch) and an adjustable speed, switchable on the fly. Pause freezes the current frame (which you can then export as PNG/SVG/TXT), Stop restores the original graphic; works in every render mode and follows setting changes live
 - **Persistent settings** — all controls are saved to `localStorage` between sessions, with a one-click reset to defaults
+- **Collapsible panels** — on desktop, click a section header to fold it away; which panels are collapsed is remembered
 - **Fixed, auto-fit size** — the image is sized to the working area and can't be resized by hand: on mobile it fills the screen width, on desktop it fits the height of the working area (width follows the aspect ratio). Always centered, and reflows on window resize / rotation
 - **Typography** — monospace font presets + upload your own `.ttf` / `.otf` / `.woff2`, adjustable size, weight (100–900), line height, tracking. Typography controls change the character density inside that fixed size, not the image size itself
 - **Color** — foreground/background pickers, swap, presets. The generator is background-aware: dense characters map to dark image areas on light backgrounds (like ink on paper) and to bright areas on dark backgrounds
@@ -55,6 +56,7 @@ Settings → Pages → Source: *Deploy from a branch* → Branch: `main`, folder
 - Undo / redo всей графики (генерация, правки, замены): кнопки ↶ / ↷ и Ctrl/⌘+Z (Shift — вперёд)
 - Анимация: оживляет собранную графику на выбор — шиммер, плазма, рябь, скан, глитч, с регулировкой скорости (переключаются на лету). «Пауза» замирает на текущем кадре (его можно скачать в PNG/SVG/TXT), «Стоп» возвращает исходную графику; работает в любом режиме и подхватывает изменения настроек вживую
 - Настройки сохраняются между сессиями (localStorage), есть кнопка сброса к значениям по умолчанию
+- Сворачиваемые панели: на десктопе клик по заголовку секции прячет её; какие свёрнуты — запоминается
 - Копирование результата в буфер одной кнопкой
 - Экспорт: `.txt`, `.png` (3×), `.svg`
 

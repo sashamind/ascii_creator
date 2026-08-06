@@ -78,6 +78,15 @@
   .sec h2{
     font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
     color:var(--blue);margin-bottom:10px;
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    cursor:pointer;user-select:none;
+  }
+  .sec h2:hover{color:var(--ink)}
+  .sec h2::after{content:'▾';font-size:9px;color:#8a8478;font-weight:400}
+  .sec.collapsed h2::after{content:'▸'}
+  @media(min-width:761px){                              /* сворачивание — только на десктопе */
+    .sec.collapsed > :not(h2){display:none}
+    .sec.collapsed h2{margin-bottom:0}
   }
   .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
   .row:last-child{margin-bottom:0}
@@ -230,6 +239,8 @@
       scroll-snap-align:start;
     }
     .sec:last-child{border-right:none}
+    .sec h2{cursor:default}
+    .sec h2::after{display:none}   /* на мобилке карточки не сворачиваются */
     .hint{display:none}
     /* компактная шапка, чтобы все кнопки экспорта помещались */
     header{gap:8px;padding:10px 10px}
@@ -1139,6 +1150,30 @@
   loadSettings();
   applyStyle();
   applyColorMode();      // синхронизировать contenteditable/подсказку с сохранённой галкой
+
+  /* ── сворачивание секций сайдбара (клик по заголовку), с запоминанием ── */
+  (function(){
+    const KEY = 'ascii_creator-collapsed';
+    let collapsed = [];
+    try{ collapsed = JSON.parse(localStorage.getItem(KEY)) || []; }catch(e){}
+    document.querySelectorAll('aside .sec').forEach(sec => {
+      const h = sec.querySelector('h2');
+      if(!h) return;
+      const key = h.textContent.trim();
+      h.tabIndex = 0; h.setAttribute('role', 'button');
+      const apply = c => { sec.classList.toggle('collapsed', c); h.setAttribute('aria-expanded', String(!c)); };
+      apply(collapsed.includes(key));
+      const toggle = () => {
+        const c = !sec.classList.contains('collapsed');
+        apply(c);
+        collapsed = collapsed.filter(k => k !== key);
+        if(c) collapsed.push(key);
+        try{ localStorage.setItem(KEY, JSON.stringify(collapsed)); }catch(e){}
+      };
+      h.addEventListener('click', toggle);
+      h.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle(); } });
+    });
+  })();
 
   /* ── свой шрифт ── */
   $('fontPick').onclick = () => $('fontFile').click();
