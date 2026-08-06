@@ -82,7 +82,7 @@
     cursor:pointer;user-select:none;
   }
   .sec h2:hover{color:var(--ink)}
-  .sec h2::after{content:'▾';font-size:9px;color:#8a8478;font-weight:400}
+  .sec h2::after{content:'▾';font-size:13px;line-height:1;color:#8a8478;font-weight:400}
   .sec.collapsed h2::after{content:'▸'}
   @media(min-width:761px){                              /* сворачивание — только на десктопе */
     .sec.collapsed > :not(h2){display:none}
@@ -1154,11 +1154,16 @@
   /* ── сворачивание секций сайдбара (клик по заголовку), с запоминанием ── */
   (function(){
     const KEY = 'ascii_creator-collapsed';
-    let collapsed = [];
-    try{ collapsed = JSON.parse(localStorage.getItem(KEY)) || []; }catch(e){}
-    document.querySelectorAll('aside .sec').forEach(sec => {
+    const secs = [...document.querySelectorAll('aside .sec')].filter(s => s.querySelector('h2'));
+    const keys = secs.map(s => s.querySelector('h2').textContent.trim());
+    let raw = null;
+    try{ raw = localStorage.getItem(KEY); }catch(e){}
+    // первый заход → свёрнуто всё, кроме «Изображение»; иначе — сохранённый выбор
+    let collapsed;
+    if(raw === null) collapsed = keys.filter(k => k !== 'Изображение');
+    else { try{ collapsed = JSON.parse(raw) || []; }catch(e){ collapsed = []; } }
+    secs.forEach(sec => {
       const h = sec.querySelector('h2');
-      if(!h) return;
       const key = h.textContent.trim();
       h.tabIndex = 0; h.setAttribute('role', 'button');
       const apply = c => { sec.classList.toggle('collapsed', c); h.setAttribute('aria-expanded', String(!c)); };
