@@ -394,6 +394,8 @@
       <button class="swap preset" data-fg="#0078BF" data-bg="#F2EFE8">riso&nbsp;blue</button>
       <button class="swap preset" data-fg="#FF48B0" data-bg="#14131A">fluo&nbsp;pink</button>
     </div>
+    <label class="check" style="margin-top:10px"><input type="checkbox" id="color"> Цвет из картинки</label>
+    <p class="mini" id="colorHint" style="display:none">Символы окрашены по картинке. Правка на это время выключена (Стоп/выключи галку — снова моно и правится). Экспорт PNG/SVG цветной.</p>
   </div>
 
   <div class="scrollfade" aria-hidden="true"></div>
@@ -568,6 +570,16 @@
       document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
     });
   }
+  const editableMode = out.getAttribute('contenteditable') || 'true';
+
+  /* ── цветной режим: символы из пикселей, правка на паузе ── */
+  function applyColorMode(){
+    const on = $('color').checked;
+    out.setAttribute('contenteditable', on ? 'false' : editableMode);
+    $('colorHint').style.display = on ? '' : 'none';
+    if(state.frame) renderOut(state.frame.L, state.frame.cols, state.frame.rows);
+  }
+  $('color').onchange = applyColorMode;
 
   /* ── набор символов ── */
   function currentRamp(){
@@ -718,12 +730,12 @@
       }
     }
 
-    state.frame = { L, cols, rows };                   // база для аниматора
-    out.textContent = paintFromL(L, cols, rows);
-    if(state.animState !== 'idle') animBase = out.textContent;     // текущий статик → на «Стоп»
+    state.frame = { L, cols, rows, data };             // база для аниматора и цвета
+    renderOut(L, cols, rows);
+    if(state.animState !== 'idle') animBase = out.innerHTML;       // текущий статик → на «Стоп»
     if(state.animState === 'paused') animFrame(animT);             // пере-заморозить кадр с новыми настройками
     state.edited = false;
-    if(state.animState === 'idle') scheduleCommit();               // кадры анимации не пишем в историю
+    if(state.animState === 'idle' && !$('color').checked) scheduleCommit();  // цвет/анимацию не пишем в историю
     updateStatus();
   }
   /* сетка светлоты L → текст (набор / контур / инверсия читаются из контролов) */
@@ -808,6 +820,27 @@
     }
     return s;
   }
+  /* вывод в #out: моно (текст) или цветной (спаны с цветом из пикселей) */
+  function escHtml(s){ return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function cellColor(d, i){ return 'rgb(' + (d[i] & ~7) + ',' + (d[i+1] & ~7) + ',' + (d[i+2] & ~7) + ')'; }
+  function renderOut(L, cols, rows){
+    const s = paintFromL(L, cols, rows);
+    const f = state.frame;
+    if(!$('color').checked || !f || !f.data){ out.textContent = s; return; }
+    const d = f.data;
+    let html = '', run = '', runCol = '', x = 0, y = 0;
+    const flush = () => { if(run){ html += '<span style="color:' + runCol + '">' + escHtml(run) + '</span>'; run = ''; } };
+    for(let k = 0; k < s.length; k++){
+      const ch = s[k];
+      if(ch === '\n'){ flush(); html += '\n'; x = 0; y++; continue; }
+      if(ch === ' '){ flush(); html += ' '; x++; continue; }   // пробелы не красим
+      const col = cellColor(d, (y*cols + x) * 4);
+      if(col === runCol) run += ch; else { flush(); run = ch; runCol = col; }
+      x++;
+    }
+    flush();
+    out.innerHTML = html;
+  }
   function hex(h){ return [1,3,5].map(i => parseInt(h.slice(i, i+2), 16)); }
   function lum([r,g,b]){ return 0.2126*r + 0.7152*g + 0.0722*b; }
   const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]].map(r => r.map(v => v / 16));
@@ -870,7 +903,7 @@
         }
       }
     }
-    out.textContent = paintFromL(animBuf, cols, rows);
+    renderOut(animBuf, cols, rows);
   }
   function animTick(){                                  // копим масштабированное время → смена скорости без скачка
     const now = performance.now();
@@ -880,7 +913,7 @@
   }
   function animPlay(){                                  // старт или продолжение
     if(!state.img || !state.frame){ flash('Сначала загрузите картинку'); return; }
-    if(state.animState === 'idle'){ animBase = out.textContent; animT = 0; animFrame(0); }  // запомнить исходник
+    if(state.animState === 'idle'){ animBase = out.innerHTML; animT = 0; animFrame(0); }  // запомнить исходник
     state.animState = 'playing';
     animLast = performance.now();
     clearInterval(animTimer);
@@ -898,7 +931,7 @@
     if(state.animState === 'idle') return;
     clearInterval(animTimer); animTimer = null;
     state.animState = 'idle';
-    if(animBase != null) out.textContent = animBase;
+    if(animBase != null) out.innerHTML = animBase;
     updateAnimUI();
     updateStatus();
   }
@@ -1060,7 +1093,7 @@
   });
 
   /* ── сохранение настроек между сессиями ── */
-  const PERSIST = ['bright','contrast','gamma','invert','edge','edgeThresh','dither','charset','customChars','lineStyle','animMode','animSpeed','font','fsize','fweight','lheight','lspace','fg','bg'];
+  const PERSIST = ['bright','contrast','gamma','invert','edge','edgeThresh','dither','charset','customChars','lineStyle','animMode','animSpeed','font','fsize','fweight','lheight','lspace','fg','bg','color'];
   function saveSettings(){
     const o = {};
     PERSIST.forEach(id => { const el = $(id); o[id] = el.type === 'checkbox' ? el.checked : el.value; });
@@ -1105,6 +1138,7 @@
   aside.addEventListener('change', saveSettings);
   loadSettings();
   applyStyle();
+  applyColorMode();      // синхронизировать contenteditable/подсказку с сохранённой галкой
 
   /* ── свой шрифт ── */
   $('fontPick').onclick = () => $('fontFile').click();
@@ -1166,7 +1200,8 @@
   };
 
   $('dl-png').onclick = () => {
-    const text = getText();
+    const cframe = $('color').checked && state.frame ? state.frame : null;
+    const text = cframe ? paintFromL(cframe.L, cframe.cols, cframe.rows).replace(/\n+$/, '') : getText();
     if(!text) return;
     const lines = text.split('\n');
     const size = +$('fsize').value;
@@ -1190,7 +1225,14 @@
     ctx.textBaseline = 'top';
     ctx.fillStyle = $('fg').value;
     lines.forEach((line, y) => {
-      if(ls === 0){
+      if(cframe){
+        for(let x = 0; x < line.length; x++){
+          const ch = line[x]; if(ch === ' ') continue;
+          const i = (y * cframe.cols + x) * 4;
+          ctx.fillStyle = 'rgb(' + cframe.data[i] + ',' + cframe.data[i+1] + ',' + cframe.data[i+2] + ')';
+          ctx.fillText(ch, pad + x * charW, pad + y * lh);
+        }
+      }else if(ls === 0){
         ctx.fillText(line, pad, pad + y * lh);
       }else{
         for(let x = 0; x < line.length; x++)
@@ -1201,7 +1243,8 @@
   };
 
   $('dl-svg').onclick = () => {
-    const text = getText();
+    const cframe = $('color').checked && state.frame ? state.frame : null;
+    const text = cframe ? paintFromL(cframe.L, cframe.cols, cframe.rows).replace(/\n+$/, '') : getText();
     if(!text) return;
     const lines = text.split('\n');
     const size = +$('fsize').value;
@@ -1218,7 +1261,22 @@
     const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     let body = '';
     lines.forEach((line, y) => {
-      body += '<text x="' + pad + '" y="' + (pad + y * lh + size * 0.8).toFixed(1) + '" xml:space="preserve">' + esc(line) + '</text>\n';
+      const yy = (pad + y * lh + size * 0.8).toFixed(1);
+      if(cframe){
+        let spans = '', run = '', runCol = '', runStart = 0;
+        const flush = () => { if(run){ spans += '<tspan x="' + (pad + runStart * charW).toFixed(1) + '" fill="' + runCol + '">' + esc(run) + '</tspan>'; run = ''; } };
+        for(let x = 0; x < line.length; x++){
+          const ch = line[x];
+          if(ch === ' '){ flush(); continue; }
+          const i = (y * cframe.cols + x) * 4;
+          const col = 'rgb(' + cframe.data[i] + ',' + cframe.data[i+1] + ',' + cframe.data[i+2] + ')';
+          if(col === runCol) run += ch; else { flush(); run = ch; runCol = col; runStart = x; }
+        }
+        flush();
+        body += '<text y="' + yy + '" xml:space="preserve">' + spans + '</text>\n';
+      }else{
+        body += '<text x="' + pad + '" y="' + yy + '" xml:space="preserve">' + esc(line) + '</text>\n';
+      }
     });
     const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">\n' +
       '<rect width="100%" height="100%" fill="' + $('bg').value + '"/>\n' +
