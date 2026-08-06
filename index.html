@@ -302,6 +302,11 @@
       <label class="check"><input type="checkbox" id="edge"> Контуры (края)</label>
     </div>
     <div class="row" id="edgeThreshRow" style="display:none"><label for="edgeThresh">Порог краёв</label><input type="range" id="edgeThresh" min="1" max="100" value="22"><output for="edgeThresh">22</output></div>
+    <select id="dither" aria-label="Дизеринг (сглаживание тонов)" style="margin-top:9px">
+      <option value="none">Дизеринг: нет</option>
+      <option value="fs">Дизеринг: Флойд–Стайнберг</option>
+      <option value="ordered">Дизеринг: упорядоченный</option>
+    </select>
   </div>
 
   <div class="sec">
@@ -755,20 +760,48 @@
     }else{
       const chars = currentRamp();
       const n = chars.length - 1;
-      for(let y = 0; y < rows; y++){
-        for(let x = 0; x < cols; x++){
-          let v = L[y * cols + x];
-          if(inv) v = 1 - v;
-          if(lightBg) v = 1 - v;
-          s += chars[Math.round(v * n)];
+      const dith = $('dither').value;
+      const val = i => { let v = L[i]; if(inv) v = 1 - v; if(lightBg) v = 1 - v; return v; };
+      if(dith === 'fs'){
+        // Флойд–Стайнберг: ошибку квантования разносим по соседям
+        let errCur = new Float32Array(cols), errNext = new Float32Array(cols);
+        for(let y = 0; y < rows; y++){
+          for(let x = 0; x < cols; x++){
+            const old = val(y*cols+x) + errCur[x];
+            const level = Math.round(Math.min(1, Math.max(0, old)) * n);
+            const e = old - level / n;
+            if(x+1 < cols) errCur[x+1] += e * 7/16;
+            if(y+1 < rows){
+              if(x > 0)      errNext[x-1] += e * 3/16;
+                             errNext[x]   += e * 5/16;
+              if(x+1 < cols) errNext[x+1] += e * 1/16;
+            }
+            s += chars[level];
+          }
+          s += '\n';
+          errCur = errNext; errNext = new Float32Array(cols);
         }
-        s += '\n';
+      }else if(dith === 'ordered'){
+        // упорядоченный (Байер 4×4): порог сдвигаем по клеткам
+        for(let y = 0; y < rows; y++){
+          for(let x = 0; x < cols; x++){
+            const v = val(y*cols+x) + (BAYER[y & 3][x & 3] - 0.5) / n;
+            s += chars[Math.min(n, Math.max(0, Math.round(v * n)))];
+          }
+          s += '\n';
+        }
+      }else{
+        for(let y = 0; y < rows; y++){
+          for(let x = 0; x < cols; x++) s += chars[Math.round(val(y*cols+x) * n)];
+          s += '\n';
+        }
       }
     }
     return s;
   }
   function hex(h){ return [1,3,5].map(i => parseInt(h.slice(i, i+2), 16)); }
   function lum([r,g,b]){ return 0.2126*r + 0.7152*g + 0.0722*b; }
+  const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]].map(r => r.map(v => v / 16));
 
   /* ── анимация собранной графики: бегущая волна яркости («шиммер») ── */
   let animTimer = null, animBase = null, animBuf = null, animT = 0, animLast = 0;
@@ -968,6 +1001,7 @@
   function updateModeControls(){
     const on = $('edge').checked;
     $('edgeThreshRow').style.display = on ? '' : 'none';
+    $('dither').style.display = on ? 'none' : '';       // дизеринг — только для плотности
     $('charset').style.display = on ? 'none' : '';
     $('shuffle').style.display = on ? 'none' : '';
     $('symHintRamp').style.display = on ? 'none' : '';
@@ -984,6 +1018,7 @@
   }
   $('edge').onchange = () => { updateModeControls(); requestGenerate(); };
   $('lineStyle').onchange = () => { updateCustomVisibility(); requestGenerate(); };
+  $('dither').onchange = requestGenerate;
 
   /* ширина картинки следует за областью превью → пересчёт при ресайзе/повороте */
   let resizeTimer = null;
@@ -1016,7 +1051,7 @@
   });
 
   /* ── сохранение настроек между сессиями ── */
-  const PERSIST = ['bright','contrast','gamma','invert','edge','edgeThresh','charset','customChars','lineStyle','animMode','animSpeed','font','fsize','fweight','lheight','lspace','fg','bg'];
+  const PERSIST = ['bright','contrast','gamma','invert','edge','edgeThresh','dither','charset','customChars','lineStyle','animMode','animSpeed','font','fsize','fweight','lheight','lspace','fg','bg'];
   function saveSettings(){
     const o = {};
     PERSIST.forEach(id => { const el = $(id); o[id] = el.type === 'checkbox' ? el.checked : el.value; });
