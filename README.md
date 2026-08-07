@@ -23,7 +23,7 @@ Drop an image → get editable ASCII art → tweak it character by character →
 - **Persistent settings** — all controls are saved to `localStorage` between sessions, with a one-click reset to defaults
 - **Collapsible panels** — on desktop, click a section header to fold it away; which panels are collapsed is remembered
 - **Fixed, auto-fit size** — the image is sized to the working area and can't be resized by hand: on mobile it fills the screen width, on desktop it fits the height of the working area (width follows the aspect ratio). Always centered, and reflows on window resize / rotation
-- **Typography** — monospace font presets + upload your own `.ttf` / `.otf` / `.woff2`, adjustable size, weight (100–900), line height, tracking. Typography controls change the character density inside that fixed size, not the image size itself
+- **Typography** — monospace font presets, including embedded dot-matrix / pixel fonts (Doto, Sixtyfour, Bytesized), plus upload your own `.ttf` / `.otf` / `.woff2`; adjustable size, weight (100–900), line height, tracking. Typography controls change the character density inside that fixed size, not the image size itself
 - **Color** — foreground/background pickers, swap, presets. The generator is background-aware: dense characters map to dark image areas on light backgrounds (like ink on paper) and to bright areas on dark backgrounds
 - **Color from image** — optional toggle that tints each character with the colour of its source pixel; the preview and PNG/SVG export become coloured (editing pauses while it's on, like a finished view)
 - **Export** — `.txt`, `.png` (3× render), `.svg` (text elements — convert to outlines in a vector editor if you used a custom font)
@@ -51,7 +51,7 @@ Settings → Pages → Source: *Deploy from a branch* → Branch: `main`, folder
 - Контурный режим: детекция краёв по Собелю с настраиваемым порогом. Контур рисуется либо символами линий по направлению края (ASCII / линии / жирные / двойные), либо любым набором плотности (включая свой) — по силе края; инверсия делает стенсил, сохраняя выбранный набор
 - Размер картинки подгоняется под рабочую область и вручную не меняется: на мобильном — по ширине экрана, на десктопе — по высоте рабочей области (ширина из пропорций). Картинка всегда по центру, пересчёт при ресайзе окна и повороте
 - Наборы символов: готовые + свой (порядок от светлого к тёмному) + кнопка случайного перемешивания набора для фактурных экспериментов
-- Шрифты: базовые моноширинные + загрузка своих (`.ttf`, `.otf`, `.woff2`), кегль, толщина, интерлиньяж, трекинг — типографика управляет только плотностью символов внутри фиксированного размера, а не размером картинки
+- Шрифты: базовые моноширинные + встроенные пиксельные Doto / Sixtyfour / Bytesized + загрузка своих (`.ttf`, `.otf`, `.woff2`), кегль, толщина, интерлиньяж, трекинг — типографика управляет только плотностью символов внутри фиксированного размера, а не размером картинки
 - Цвета текста и фона с пресетами; генератор учитывает светлоту фона
 - Цвет из картинки: опция, красящая каждый символ в цвет его пикселя; превью и экспорт PNG/SVG становятся цветными (правка на это время выключается)
 - Ручные правки не затираются автоперегенерацией; клик по символу подставляет его в замену
