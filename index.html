@@ -84,10 +84,8 @@
   .sec h2:hover{color:var(--ink)}
   .sec h2::after{content:'▾';font-size:13px;line-height:1;color:#8a8478;font-weight:400}
   .sec.collapsed h2::after{content:'▸'}
-  @media(min-width:761px){                              /* сворачивание — только на десктопе */
-    .sec.collapsed > :not(h2){display:none}
-    .sec.collapsed h2{margin-bottom:0}
-  }
+  .sec.collapsed > :not(h2){display:none}               /* сворачивание секций (десктоп и мобилка) */
+  .sec.collapsed h2{margin-bottom:0}
   .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
   .row:last-child{margin-bottom:0}
   .row label{font-size:11.5px;color:#4a463f;white-space:nowrap}
@@ -216,32 +214,18 @@
   .hist:disabled{opacity:.3;cursor:default}
   .hist:disabled:hover{background:var(--paper);color:var(--ink)}
   @media(max-width:760px){
-    /* iOS Safari: тянемся на полную высоту без нижней панели (lvh), а страницу делаем
-       прокручиваемой — лёгкий скролл вниз прячет панель браузера */
+    /* мобилка: превью — фиксированные 2/3 экрана (стабильно, без зависимости от панели Safari);
+       меню — вертикальным списком ниже; страница прокручивается вниз (заодно прячется панель браузера) */
     html,body{height:auto;overflow:visible}
-    body{min-height:100vh;min-height:100lvh}
-    /* превью сверху, настройки — вниз горизонтальной лентой карточек */
-    .app{flex-direction:column-reverse}
-    main{flex:1 1 auto;min-height:0}
+    body{min-height:100vh;min-height:100svh}
+    .app{flex-direction:column}
+    main{order:0;flex:0 0 auto;height:66vh;height:66.67svh;min-height:0}
     aside{
-      width:100%;flex:0 0 auto;max-height:46vh;
-      display:flex;flex-direction:row;align-items:stretch;
-      overflow-x:auto;overflow-y:hidden;
-      -webkit-overflow-scrolling:touch;
-      scroll-snap-type:x proximity;
-      overscroll-behavior-x:contain;
-      border-left:none;border-top:2px solid var(--ink);
-      padding-bottom:0;
+      order:1;width:100%;display:block;overflow:visible;
+      border-left:none;border-top:2px solid var(--ink);padding-bottom:24px;
     }
-    .sec{
-      flex:0 0 85vw;max-width:320px;
-      border-bottom:none;border-right:1.5px solid var(--line);
-      overflow-y:auto;
-      scroll-snap-align:start;
-    }
-    .sec:last-child{border-right:none}
-    .sec h2{cursor:default}
-    .sec h2::after{display:none}   /* на мобилке карточки не сворачиваются */
+    .sec{border-right:none;border-bottom:1.5px solid var(--line)}
+    .app.panels-hidden main{height:100vh;height:100svh}   /* ⛶ → картинка на весь экран */
     .hint{display:none}
     /* компактная шапка, чтобы все кнопки экспорта помещались */
     header{gap:8px;padding:10px 10px}
@@ -268,15 +252,6 @@
     .onb-step h3{font-size:18px;margin:14px 0 12px}
     .onb-step p{line-height:1.6}
     .onb-nav{margin-top:24px}
-    /* градиент у правого края ленты → видно, что настройки листаются вправо */
-    .scrollfade{
-      display:block;position:sticky;right:0;align-self:stretch;
-      flex:0 0 0;width:0;pointer-events:none;z-index:3;
-    }
-    .scrollfade::before{
-      content:'';position:absolute;top:0;bottom:0;right:0;width:46px;
-      background:linear-gradient(to left, var(--panel), rgba(235,231,221,0));
-    }
   }
 </style>
 </head>
@@ -303,7 +278,7 @@
     <input type="file" id="file" accept="image/*,video/*" hidden>
     <button class="full" id="demo">Пример — сфера</button>
     <button class="full" id="vidToggle" style="display:none" title="Пауза / воспроизведение">⏸ Пауза</button>
-    <button class="full" id="cam" title="Использовать веб-камеру">📷 Веб-камера</button>
+    <button class="full" id="cam" title="Использовать веб-камеру">Веб-камера</button>
     <div id="camCtl" style="display:none">
       <button class="full" id="camFlip" title="Переключить фронтальную / тыловую">⇄ Сменить камеру</button>
       <label class="check" style="margin-top:8px"><input type="checkbox" id="camMirror"> Зеркалить</label>
