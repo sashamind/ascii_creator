@@ -297,7 +297,12 @@
     <button class="full" id="pick">Загрузить картинку / видео…</button>
     <input type="file" id="file" accept="image/*,video/*" hidden>
     <button class="full" id="demo">Пример — сфера</button>
-    <button class="full" id="vidToggle" style="display:none" title="Пауза / воспроизведение видео">⏸ Пауза</button>
+    <button class="full" id="vidToggle" style="display:none" title="Пауза / воспроизведение">⏸ Пауза</button>
+    <button class="full" id="cam" title="Использовать веб-камеру">📷 Веб-камера</button>
+    <div id="camCtl" style="display:none">
+      <button class="full" id="camFlip" title="Переключить фронтальную / тыловую">⇄ Сменить камеру</button>
+      <label class="check" style="margin-top:8px"><input type="checkbox" id="camMirror"> Зеркалить</label>
+    </div>
     <button class="full" id="reset" title="Вернуть все настройки к значениям по умолчанию">⌫ Сбросить настройки</button>
     <p class="mini">Картинка или видео — перетащи в область превью, или вставь из буфера (Ctrl+V). Видео проигрывается в ASCII; на паузе кадр можно править и скачать.</p>
   </div>
@@ -448,7 +453,7 @@
       <div class="onb-step on">
         <span class="onb-badge">Шаг 1 из 5</span>
         <h3 id="onbTitle">Загрузите картинку</h3>
-        <p>Перетащите картинку <b>или видео</b> в область превью, нажмите <b>«Загрузить…»</b> или вставьте из буфера (Ctrl/⌘+V). Нет своей — жмите <b>«Пример — сфера»</b>. Видео играет прямо в ASCII (на паузе кадр можно править и скачать); фото с телефона повернутся сами.</p>
+        <p>Перетащите картинку <b>или видео</b>, нажмите <b>«Загрузить…»</b>, вставьте из буфера (Ctrl/⌘+V) или включите <b>веб-камеру</b>. Нет своей — жмите <b>«Пример — сфера»</b>. Видео и камера играют прямо в ASCII (на паузе кадр можно править и скачать).</p>
       </div>
       <div class="onb-step">
         <span class="onb-badge">Шаг 2 из 5</span>
@@ -488,7 +493,7 @@
   const out = $('out'), drop = $('drop'), stage = $('stage');
   const statusBar = $('statusBar'), statusText = $('statusText');
 
-  const state = { img: null, edited: false, customFonts: 0, frame: null, animState: 'idle', video: null, videoPlaying: false };
+  const state = { img: null, edited: false, customFonts: 0, frame: null, animState: 'idle', video: null, videoPlaying: false, stream: null, facing: 'user', mirror: false };
 
   /* ── анимированная ASCII-заставка в дропзоне ── */
   const dropArt = $('dropArt');
@@ -523,7 +528,8 @@
   let videoTimer = null;
   function stopVideo(){
     clearInterval(videoTimer); videoTimer = null;
-    if(state.video){ try{ state.video.pause(); URL.revokeObjectURL(state.video.src); }catch(e){} }
+    if(state.stream){ try{ state.stream.getTracks().forEach(t => t.stop()); }catch(e){} state.stream = null; }
+    if(state.video){ try{ state.video.pause(); if(state.video.src) URL.revokeObjectURL(state.video.src); state.video.srcObject = null; }catch(e){} }
     state.video = null; state.videoPlaying = false;
   }
   function resetForNewSource(){
@@ -536,6 +542,7 @@
   function useImage(img){
     stopVideo();
     state.img = img;
+    state.mirror = false;
     resetForNewSource();
     updateVideoUI();
     generate();
@@ -566,12 +573,37 @@
     v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
     v.src = URL.createObjectURL(file);
     v.onloadeddata = () => {
-      state.img = v; state.video = v;
+      state.img = v; state.video = v; state.mirror = false;
       resetForNewSource();
       playVideo();
     };
     v.onerror = () => { URL.revokeObjectURL(v.src); flash('Не удалось прочитать видео'); };
   }
+  /* ── веб-камера: тот же видео-цикл, только источник — живой поток ── */
+  async function startCamera(facing){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ flash('Камера не поддерживается'); return; }
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing }, audio: false });
+      stopVideo();                                      // прежний источник глушим только после успеха (отказ его не сотрёт)
+      const v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.srcObject = stream;
+      state.facing = facing;
+      state.mirror = facing === 'user';                 // фронталку по умолчанию зеркалим
+      $('camMirror').checked = state.mirror;
+      state.img = v; state.video = v; state.stream = stream;
+      resetForNewSource();
+      await v.play().catch(() => {});
+      playVideo();                                      // цикл сам ждёт первый кадр (guard в generate)
+    }catch(e){
+      flash('Нет доступа к камере: ' + ((e && e.name) || 'ошибка'));
+    }
+  }
+  function switchCamera(){
+    if(state.stream) startCamera(state.facing === 'user' ? 'environment' : 'user');
+  }
+  $('cam').onclick = () => startCamera('user');
+  $('camFlip').onclick = switchCamera;
+  $('camMirror').onchange = () => { state.mirror = $('camMirror').checked; if(!state.videoPlaying) generate(); };
   function playVideo(){
     if(!state.video) return;
     if(state.animState !== 'idle') animStop();          // видео и шиммер не крутим одновременно
@@ -594,6 +626,7 @@
     b.style.display = state.video ? '' : 'none';
     b.textContent = state.videoPlaying ? '⏸ Пауза' : '▶ Играть';
     b.classList.toggle('pink', state.videoPlaying);
+    $('camCtl').style.display = state.stream ? '' : 'none';
   }
   $('vidToggle').onclick = () => state.videoPlaying ? pauseVideo() : playVideo();
   $('pick').onclick = () => $('file').click();
@@ -774,6 +807,7 @@
     const cv = document.createElement('canvas');
     cv.width = cols; cv.height = rows;
     const ctx = cv.getContext('2d', { willReadFrequently: true });
+    if(state.mirror){ ctx.translate(cols, 0); ctx.scale(-1, 1); }   // зеркало (фронтальная камера)
     ctx.drawImage(img, 0, 0, cols, rows);
     const data = ctx.getImageData(0, 0, cols, rows).data;
 
