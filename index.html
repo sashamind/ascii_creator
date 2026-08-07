@@ -210,6 +210,7 @@
   .status.edited .dot{background:var(--pink)}
   #regen{display:none;padding:3px 9px;font-size:10.5px}
   .status.edited #regen{display:inline-block}
+  #panelsToggle{display:none;flex-shrink:0;padding:2px 9px;font-size:13px;line-height:1}
   .histgrp{display:flex;gap:4px;flex-shrink:0}
   .hist{padding:2px 9px;font-size:13px;line-height:1}
   .hist:disabled{opacity:.3;cursor:default}
@@ -249,14 +250,18 @@
     .exports{gap:5px}
     .exports button{padding:6px 7px;font-size:11px}
     #copy .lbl{display:none}
-    /* превью почти во всю ширину экрана — картинка идёт по размеру экрана */
-    .stage{padding:12px}
-    #drop{inset:12px}
-    #out{padding:12px 14px}
+    /* превью максимально во всю область — минимальные отступы */
+    .stage{padding:5px}
+    #drop{inset:5px}
+    #out{padding:6px 8px}
+    /* «свернуть все панели» → только превью на весь экран */
+    .app.panels-hidden aside,
+    .app.panels-hidden .scrollfade{display:none}
     /* компактный статус-бар, чтобы ↶↷ + «перегенерировать» помещались */
     .status{gap:8px;padding:6px 12px}
     #statusText{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .rnote{display:none}
+    #panelsToggle{display:inline-block}
     /* онбординг: на мобилке плотнее по высоте (меньше межстрочный и отступы) */
     .onb-card{padding:26px 24px 20px}
     .onb-anim{margin-bottom:22px;padding-bottom:18px}
@@ -435,6 +440,7 @@
     </span>
     <span id="statusText">Нет изображения</span>
     <button id="regen" class="pink">⟲ перегенерировать<span class="rnote"> (правки сотрутся)</span></button>
+    <button id="panelsToggle" title="Свернуть панели — только картинка" aria-label="Свернуть панели">⛶</button>
   </div>
 </main>
 </div>
@@ -558,10 +564,16 @@
     if(!file) return;
     if(file.type.startsWith('video/')){ loadVideo(file); return; }
     if(!file.type.startsWith('image/')){ flash('Не картинка и не видео: ' + (file.name || file.type || '?')); return; }
-    // createImageBitmap с from-image применяет EXIF-ориентацию (фото с телефона не повёрнуты)
+    // createImageBitmap с from-image даёт EXIF-ориентацию, но на мобилке бывает медленным/капризным —
+    // гонка с таймаутом, при неудаче/нуле надёжно грузим через <img>
     if(window.createImageBitmap){
-      try{ useImage(await createImageBitmap(file, { imageOrientation: 'from-image' })); return; }
-      catch(e){ /* SVG и пр. — падаем в фолбэк */ }
+      try{
+        const bmp = await Promise.race([
+          createImageBitmap(file, { imageOrientation: 'from-image' }),
+          new Promise((_, rej) => setTimeout(rej, 5000))
+        ]);
+        if(bmp && bmp.width){ useImage(bmp); return; }
+      }catch(e){ /* SVG, таймаут, старый Safari — падаем в <img> */ }
     }
     loadViaElement(file);
   }
@@ -778,7 +790,7 @@
     const pad = parseFloat(sCS.paddingLeft) + parseFloat(sCS.paddingRight)
               + parseFloat(oCS.paddingLeft) + parseFloat(oCS.paddingRight)
               + parseFloat(oCS.borderLeftWidth) + parseFloat(oCS.borderRightWidth);
-    return Math.max(60, stage.clientWidth - pad - 2);  // -2px запас, чтобы строка точно не вылезла
+    return Math.max(60, stage.clientWidth - pad - 4);  // запас, чтобы строка точно не вылезла (иначе смещение)
   }
   /* доступная под картинку высота области превью (px) */
   function availHeight(){
@@ -1079,6 +1091,14 @@
   }
   $('undo').onclick = undo;
   $('redo').onclick = redo;
+  // свернуть/показать все панели (мобилка) → картинка на весь экран, с пере-подгонкой размера
+  $('panelsToggle').onclick = () => {
+    const hidden = document.querySelector('.app').classList.toggle('panels-hidden');
+    const b = $('panelsToggle');
+    b.textContent = hidden ? '☰' : '⛶';
+    b.title = hidden ? 'Показать панели' : 'Свернуть панели — только картинка';
+    requestGenerate();                                 // переподгон под новую область
+  };
   document.addEventListener('keydown', e => {
     if(!(e.ctrlKey || e.metaKey)) return;
     const k = e.key.toLowerCase();
